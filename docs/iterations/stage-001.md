@@ -20,6 +20,10 @@
 - npm audit 官方 registry 检查结果为 0 vulnerabilities；锁文件不包含凭据。已配置 GitHub Actions 验证与手动静态部署工作流。
 - public GitHub 仓库 https://github.com/ax2/algo-atlas 已创建，代码提交与远端验证随后记录。
 
+## 发布记录
+
+2026-10-30 已推送到 ax2/algo-atlas 的 main，功能提交 `1a564f8`。GitHub API 确认 PUBLIC / MIT / main。独立 Ubuntu / Node 22 CI 的依赖安装、36 项测试、类型检查、生产构建、10 项桌面/移动 Chromium 回归全部成功：[Verify 41067612890](https://github.com/ax2/algo-atlas/actions/runs/41067612890)。后续提交仅补充本记录，不修改经过验证的程序代码。静态 Pages 部署工作流为手动入口，本次未启用公网站点。
+
 ## 已知边界
 
 机制场景不等于所有数据结构操作。历史与复杂度独立编写并附资料入口，尚未经专业课程审定。移动端为模拟视口，不能声称真机或用户验收。常用度是编辑判断，并非实时统计。详见 README 和覆盖清单。
