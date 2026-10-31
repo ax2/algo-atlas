@@ -26,10 +26,12 @@ function EnergyEdge({
     dx = b.x - a.x,
     dy = b.y - a.y,
     len = Math.hypot(dx, dy) || 1;
-  const x1 = a.x + (dx / len) * 25,
-    y1 = a.y + (dy / len) * 25,
-    x2 = b.x - (dx / len) * 29,
-    y2 = b.y - (dy / len) * 29;
+  const startRadius = a.kind ? 9 : Math.min(len / 3, 25),
+    endRadius = b.kind ? 9 : Math.min(len / 3, 29);
+  const x1 = a.x + (dx / len) * startRadius,
+    y1 = a.y + (dy / len) * startRadius,
+    x2 = b.x - (dx / len) * endRadius,
+    y2 = b.y - (dy / len) * endRadius;
   const d = `M ${x1} ${y1} L ${x2} ${y2}`,
     transition = { duration, ease: travel };
   return (
@@ -184,7 +186,7 @@ function GraphScene({
       <AnimatePresence initial={!still}>
         {nodes.map((n) => {
           const active = !!n.color,
-            w = Math.max(46, n.label.length * 8.6),
+            w = n.kind ? 18 : Math.max(46, n.label.length * 8.6),
             color =
               n.color === "orange"
                 ? "var(--orange)"
@@ -214,7 +216,7 @@ function GraphScene({
               role="button"
               tabIndex={0}
               aria-label={`节点 ${n.label}`}
-              onClick={() => onInspect?.(`节点 ${n.label}`)}
+              onClick={() => onInspect?.(`节点 ${n.label} ${n.subtitle || ""}`)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
@@ -222,7 +224,7 @@ function GraphScene({
                 }
               }}
             >
-              {active && !still && (
+              {active && !still && !n.kind && (
                 <>
                   <circle r="55" fill={`url(#${glow}-halo)`} />
                   <motion.rect
@@ -245,10 +247,10 @@ function GraphScene({
               <motion.rect
                 className="node-shell"
                 x={-w / 2}
-                y="-23"
+                y={n.kind ? -9 : -23}
                 width={w}
-                height="46"
-                rx="14"
+                height={n.kind ? 18 : 46}
+                rx={n.kind === "point" ? 9 : n.kind === "centroid" ? 2 : 14}
                 animate={{
                   stroke: color,
                   fill: active
@@ -265,14 +267,14 @@ function GraphScene({
                 fill="none"
                 stroke={active ? color : "var(--blue)"}
                 strokeWidth="1.5"
-                animate={{ opacity: active ? 0.85 : 0.15 }}
+                animate={{ opacity: n.kind ? 0 : active ? 0.85 : 0.15 }}
                 transition={{ duration }}
               />
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.text
                   key={n.label}
                   x="0"
-                  y="5"
+                  y={n.kind === "point" ? 26 : n.kind === "centroid" ? -15 : 5}
                   initial={
                     still ? false : { opacity: 0, y: 13, filter: "blur(3px)" }
                   }
@@ -287,6 +289,11 @@ function GraphScene({
                   {n.label}
                 </motion.text>
               </AnimatePresence>
+              {n.subtitle && !n.kind && (
+                <text className="node-subtitle" x="0" y="38">
+                  {n.subtitle}
+                </text>
+              )}
             </motion.g>
           );
         })}

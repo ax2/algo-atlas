@@ -1,5 +1,5 @@
 import { numbers, range, recorder } from "./model";
-import type { Trace } from "./model";
+import type { Trace, Frame } from "./model";
 export function math(id: string, raw: string): Trace {
   const { frames, add } = recorder();
   let result: unknown,
@@ -121,8 +121,10 @@ export function math(id: string, raw: string): Trace {
     const cross = (a: P, b: P, c: P) =>
       (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
     const key = (a: P) => a.join(",");
+    let inputState: Frame["inputState"];
     const emit = (title: string, detail: string, chain: P[]) =>
       add(title, detail, {
+        inputState,
         nodes: p.map((a) => ({
           id: key(a),
           label: `(${a.join(",")})`,
@@ -140,17 +142,35 @@ export function math(id: string, raw: string): Trace {
       ["下链", p, lower],
       ["上链", [...p].reverse(), upper],
     ] as const)
-      for (const pt of points) {
+      for (const [i, pt] of points.entries()) {
+        inputState = {
+          source: p.map(key),
+          current: key(pt),
+          pending: points.slice(i + 1).map(key),
+          processed: i,
+          label: name + "扫描顺序",
+        };
         while (
           chain.length >= 2 &&
           cross(chain.at(-2)!, chain.at(-1)!, pt) <= 0
         ) {
+          const value = cross(chain.at(-2)!, chain.at(-1)!, pt);
           const removed = chain.pop()!;
-          emit("删除非左转点", `${name}移除 (${removed})；叉积 ≤ 0。`, chain);
+          emit(
+            "删除非左转点",
+            `${name}移除 (${removed})；与候选 (${pt}) 的叉积=${value}≤0。`,
+            chain,
+          );
         }
         chain.push(pt);
         emit("加入边界候选", `${name}加入 (${pt})。`, chain);
       }
+    inputState = {
+      source: p.map(key),
+      pending: [],
+      processed: p.length,
+      label: "上下链构造完成",
+    };
     const hull = [...lower.slice(0, -1), ...upper.slice(0, -1)];
     emit("闭合凸包", "所有内部点都在边界内侧，共线中间点已删除。", [
       ...hull,

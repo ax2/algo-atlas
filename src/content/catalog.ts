@@ -1,4 +1,5 @@
 import type { Category, Topic } from "./types";
+import { extendedTopics } from "./extended";
 
 // Original teaching notes. Ratings are editorial guidance, never live usage statistics.
 const rows: Topic[] = [];
@@ -102,7 +103,7 @@ kruskal|Kruskal 最小生成树|Kruskal|244|按边权从小到大尝试连接，
 prim|Prim 最小生成树|Prim|244|从一个点出发，每次选跨越当前树与外部的最轻边。|该思想由 Jarník 在 1930 年提出，Prim 于 1957 年发表相关方法。|稠密网络布线、基础设施连接|每次选边都跨越当前树的割|本实验为边扫描版本；更高效实现使用优先队列|O(VE);O(VE);O(VE) 演示实现;O(V+E)|实验每轮扫描 E 条边，最多 V 轮；矩阵版 O(V²)，堆版 O(E log V)。|从已建成的线路边缘，选择最便宜的下一段扩建。
 astar|A* 搜索|A-star|244|按 f=g+h 选择待扩展节点，把已走代价与到终点的估计结合。|Hart、Nilsson、Raphael 在 1968 年提出 A* 的形式化研究。|游戏寻路、机器人规划|一致启发式下已关闭节点无需重新打开|高估可能丢失最优解；本实验 h=0，展示其退化为 Dijkstra 的基线|依赖启发式;依赖启发式;O(V²+E) 本实验;O(V+E)|通用状态空间中搜索规模可呈指数；有限显式图、h=0 和线性选点对应 Dijkstra 的复杂度。|已有路程加上预计剩余路程，决定下一步探索哪里。
 scc|强连通分量|Kosaraju SCC|344|通过原图后序与反图搜索，把互相可达的顶点分组。|Kosaraju 与 Sharir 的相关工作形成经典的两遍 DFS 强连通分量算法。|循环依赖、图压缩、2-SAT 基础|同一分量内任意两点相互可达，缩点图无环|不能把弱连通分量误当强连通；反向图必不可少|O(V+E);O(V+E);O(V+E);O(V+E)|构造反图并做两次 DFS，总共线性扫描顶点和边。|把能相互往返的街区合并成一座大站。
-max-flow|最大流|Edmonds–Karp|344|在残量网络中用 BFS 找增广路，沿瓶颈增加流量并更新反向边。|Ford–Fulkerson 提出增广路框架；Edmonds 与 Karp 在 1972 年分析 BFS 选路的界。|网络容量、二分匹配、资源分配|中间节点流入等于流出，每条边流量不超过容量|反向残量边不是可省略的细节，它允许撤回旧分配|O(VE²);O(VE²);O(VE²);O(V²) 矩阵实验|BFS 增广使关键边可饱和的次数受限；这里用小图残量矩阵帮助观察反向边。|向管网不断注水，每条增广路线受最窄管道限制。
+max-flow|最大流|Edmonds–Karp|344|在残量网络中用 BFS 找增广路，沿瓶颈增加流量并更新反向边。|Ford–Fulkerson 提出增广路框架；Edmonds 与 Karp 在 1972 年分析 BFS 选路的界。|网络容量、二分匹配、资源分配|中间节点流入等于流出，每条边流量不超过容量|反向残量边不是可省略的细节，它允许撤回旧分配|O(V²+VE²);O(V²+VE²);O(V²+VE²);O(V²) 矩阵实验|邻接表枚举正反向边，BFS 增广总界 O(VE²)；额外 O(V²) 初始化残量矩阵，帮助观察反向边。|向管网不断注水，每条增广路线受最窄管道限制。
 `,
 );
 group(
@@ -225,7 +226,18 @@ for (const id of [
     input: "0",
     inputHint: "精选可切换场景；每个场景均有独立计算轨迹",
   };
-export const topics: Topic[] = rows.map((t) => ({ ...t, ...settings[t.id] }));
+export const topics: Topic[] = [
+  ...rows.map((t) => ({ ...t, ...settings[t.id] })),
+  ...extendedTopics,
+];
+topics.find((t) => t.id === "avl")!.scenarios = [
+  "A · LL / RR 单旋",
+  "B · LR / RL 双旋",
+];
+topics.find((t) => t.id === "red-black")!.scenarios = [
+  "A · 左倾插入与染色",
+  "B · 双旋与颜色翻转",
+];
 export const topicById: Record<string, Topic> = Object.assign(
   Object.create(null),
   Object.fromEntries(topics.map((t) => [t.id, t])),

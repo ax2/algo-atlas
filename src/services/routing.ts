@@ -1,5 +1,5 @@
 export type Route = {
-  view: "lesson" | "catalog" | "cases" | "learning";
+  view: "lesson" | "catalog" | "cases" | "learning" | "practice";
   id: string;
   params: URLSearchParams;
 };
@@ -7,7 +7,7 @@ export function readRoute(): Route {
   const [path, query = ""] = location.hash.replace(/^#\/?/, "").split("?");
   const [view, id] = path.split("/");
   return {
-    view: ["lesson", "catalog", "cases", "learning"].includes(view)
+    view: ["lesson", "catalog", "cases", "learning", "practice"].includes(view)
       ? (view as Route["view"])
       : "lesson",
     id: id || "quick",

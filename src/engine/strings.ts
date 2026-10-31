@@ -79,6 +79,27 @@ export function strings(id: string, raw: string): Trace {
       return forest.splice(m, 1)[0];
     };
     while (forest.length > 1) {
+      const candidates = forest.slice().sort((a, b) => a.freq - b.freq);
+      add(
+        "选择下一对候选",
+        `即将合并 ${candidates[0].char || candidates[0].id}:${candidates[0].freq} 与 ${candidates[1].char || candidates[1].id}:${candidates[1].freq}。`,
+        {
+          ...picture(),
+          checkpoint: true,
+          inputState: {
+            source: [...freq].map(([c, f]) => `${c}:${f}`),
+            current: candidates
+              .slice(0, 2)
+              .map((p) => `${p.char || p.id}:${p.freq}`)
+              .join(" + "),
+            pending: candidates
+              .slice(2)
+              .map((p) => `${p.char || p.id}:${p.freq}`),
+            processed: seq,
+            label: "候选森林；当前为本轮最小的两棵树",
+          },
+        },
+      );
       const left = takeMin(),
         right = takeMin();
       forest.push({

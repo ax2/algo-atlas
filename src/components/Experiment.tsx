@@ -36,6 +36,10 @@ export function Experiment({
     [inspect, setInspect] = useState(""),
     [error, setError] = useState("");
   const [effects, setEffects] = useState(true);
+  const [guided, setGuided] = useState(false);
+  const [zoom, setZoom] = useState(() =>
+    window.matchMedia("(max-width: 600px)").matches ? 1.8 : 1,
+  );
   const reduced = useMotionPreference();
   const computed = useMemo(() => {
     try {
@@ -59,19 +63,17 @@ export function Experiment({
   }, [input, target, position, onState, computed.error, topic.input]);
   useEffect(() => {
     if (!playing) return;
-    const timer = setInterval(
-      () =>
-        setStep((s) => {
-          if (s >= trace.frames.length - 1) {
-            setPlaying(false);
-            return s;
-          }
-          return s + 1;
-        }),
-      speed,
-    );
-    return () => clearInterval(timer);
-  }, [playing, speed, trace.frames.length]);
+    if (position >= trace.frames.length - 1) {
+      setPlaying(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      const next = position + 1;
+      setStep(next);
+      if (guided && trace.frames[next].checkpoint) setPlaying(false);
+    }, speed);
+    return () => clearTimeout(timer);
+  }, [playing, speed, trace, position, guided]);
   const apply = (value = draft, t = Number(targetDraft)) => {
     try {
       runTrace(topic.id, value, t);
@@ -109,8 +111,12 @@ export function Experiment({
                   value={input}
                   onChange={(e) => apply(e.target.value)}
                 >
-                  <option value="0">场景 A · 理解机制</option>
-                  <option value="1">场景 B · 改变条件</option>
+                  <option value="0">
+                    {topic.scenarios?.[0] || "场景 A · 理解机制"}
+                  </option>
+                  <option value="1">
+                    {topic.scenarios?.[1] || "场景 B · 改变条件"}
+                  </option>
                 </select>
               ) : (
                 <input
@@ -171,6 +177,43 @@ export function Experiment({
               {error || computed.error}
             </div>
           )}
+          <div className="input-context" aria-label="实验数据上下文">
+            <details open>
+              <summary>
+                初始数据 ·{" "}
+                {(frame.inputState?.source || trace.source || []).length} 项
+              </summary>
+              <div className="data-chips">
+                {(frame.inputState?.source || trace.source || []).map(
+                  (v, i) => (
+                    <span key={i}>{v}</span>
+                  ),
+                )}
+              </div>
+            </details>
+            {frame.inputState && (
+              <div className="processing-row">
+                {frame.inputState.label && (
+                  <span>{frame.inputState.label}</span>
+                )}
+                <span>
+                  当前处理 <b>{frame.inputState.current ?? "—"}</b>
+                </span>
+                <span>
+                  下一个 <b>{frame.inputState.pending[0] ?? "无"}</b>
+                </span>
+                <span>
+                  待处理 <b>{frame.inputState.pending.join(" → ") || "无"}</b>
+                </span>
+              </div>
+            )}
+            <p>
+              下一步：{trace.frames[position + 1]?.title || "演示结束"}
+              {trace.frames[position + 1]
+                ? " · " + trace.frames[position + 1].detail
+                : ""}
+            </p>
+          </div>
           <div className="canvas">
             <div className="canvas-top">
               <span>
@@ -197,14 +240,53 @@ export function Experiment({
                     : "简洁动效"}
               </button>
             </div>
-            <Diagram
-              frame={frame}
-              kind={trace.kind}
-              onInspect={setInspect}
-              tick={position}
-              milliseconds={playing ? speed : 850}
-              effects={effects}
-            />
+            {frame.nodes && (
+              <div className="diagram-tools">
+                <span>图解缩放 · 可滚动查看</span>
+                <button
+                  type="button"
+                  aria-label="缩小图解"
+                  onClick={() => setZoom((z) => Math.max(1, z - 0.25))}
+                  disabled={zoom <= 1}
+                >
+                  −
+                </button>
+                <button
+                  type="button"
+                  aria-label="适应宽度"
+                  onClick={() => setZoom(1)}
+                >
+                  {Math.round(zoom * 100)}%
+                </button>
+                <button
+                  type="button"
+                  aria-label="放大图解"
+                  onClick={() => setZoom((z) => Math.min(3, z + 0.25))}
+                  disabled={zoom >= 3}
+                >
+                  ＋
+                </button>
+              </div>
+            )}
+            <div
+              className={frame.nodes ? "diagram-viewport" : "diagram-plain"}
+              tabIndex={frame.nodes ? 0 : undefined}
+              aria-label={frame.nodes ? "可滚动图解" : undefined}
+            >
+              <div
+                className={frame.nodes ? "diagram-content" : undefined}
+                style={frame.nodes ? { width: `${zoom * 100}%` } : undefined}
+              >
+                <Diagram
+                  frame={frame}
+                  kind={trace.kind}
+                  onInspect={setInspect}
+                  tick={position}
+                  milliseconds={playing ? speed : 850}
+                  effects={effects}
+                />
+              </div>
+            </div>
             <div className="canvas-bottom">
               <span>
                 <i className="mint-dot" /> 已确定 / 已访问
@@ -303,6 +385,30 @@ export function Experiment({
             </label>
           </div>
           <p className="lab-caption">{trace.caption}</p>
+          <label className="guided-toggle">
+            <input
+              type="checkbox"
+              checked={guided}
+              onChange={(e) => setGuided(e.target.checked)}
+            />{" "}
+            讲解模式：关键节点自动暂停
+          </label>
+          <div className="checkpoint-list" aria-label="关键节点导航">
+            {trace.frames.map((f, i) =>
+              f.checkpoint ? (
+                <button
+                  key={i}
+                  className={i === position ? "active" : ""}
+                  onClick={() => {
+                    setPlaying(false);
+                    setStep(i);
+                  }}
+                >
+                  {i} · {f.title}
+                </button>
+              ) : null,
+            )}
+          </div>
         </section>
         <aside className="inspector">
           <h3>
@@ -333,6 +439,21 @@ export function Experiment({
               <p aria-live="polite">{frame.detail}</p>
             </motion.div>
           </div>
+          {frame.explanation && (
+            <section className="step-explanation" aria-label="关键步骤详解">
+              <h4>{frame.checkpoint ? "关键节点详解" : "读懂这一步"}</h4>
+              <dl>
+                <dt>为什么这样做</dt>
+                <dd>{frame.explanation.why}</dd>
+                <dt>具体改变</dt>
+                <dd>{frame.explanation.changes}</dd>
+                <dt>检查与边界</dt>
+                <dd>{frame.explanation.check}</dd>
+                <dt>先想一想</dt>
+                <dd>{frame.explanation.predict}</dd>
+              </dl>
+            </section>
+          )}
           <h4 className="small-title">关键不变量</h4>
           <div className="invariant">{topic.invariant}</div>
           {Object.keys(frame.stats).length > 0 && (

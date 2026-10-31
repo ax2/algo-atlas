@@ -2,7 +2,7 @@
 
 ## 内容与运行分离
 
-Topic 只描述课程与输入协议；runTrace 依据分类派发到六类纯函数引擎。引擎返回 `Trace {frames,kind,result,caption}`，Frame 表示数组、节点/边、矩阵中的一种或数种状态。Diagram 按帧实际字段选择渲染器，因此同一图课可以在图与距离矩阵之间切换。
+Topic 只描述课程与输入协议；runTrace 依据分类派发到基础、进阶结构和 AI 纯函数引擎。引擎返回 `Trace {frames,kind,result,caption}`，Frame 表示数组、节点/边、矩阵中的一种或数种状态。Diagram 按帧实际字段选择渲染器，因此同一图课可以在图与距离矩阵之间切换。
 
 所有帧写入时 structuredClone，播放器只持有输入、目标、当前索引、播放状态与速度。播放器不会在暂停/回退时重新随机运行算法。轨迹通过 useMemo 在输入或课程改变时计算，定时器在卸载时清理。
 
@@ -27,3 +27,9 @@ Topic 只描述课程与输入协议；runTrace 依据分类派发到六类纯�
 - 图与复杂树采用有限精选机制场景，强调规则而非图编辑器。
 - 源码页展示真实引擎模块，包括绘图轨迹辅助代码，方便与运行结果对应。
 - 不引入第三方统计、广告或外部字体请求。
+
+## Stage 003 的内容与讲解契约
+
+Frame 增加 explanation、checkpoint、inputState，Trace 增加 source。讲解器只使用已计算轨迹和对应机制规则，不臆测下一次数据；播放器使用 setTimeout，在关键帧到达时暂停。完整树的指针变更先接回根，再生成帧；旧快照仍不可变。
+
+题库使用稳定 Problem.id 与 topic 标签，独立列表/详情路由、分页、筛选和分层揭示题解。参考函数单独维护，源码摘取与测试运行指向同一文件；换行标准化使 Windows checkout 的 CRLF 不影响代码展示。LearningData v1 可选 exerciseCompleted 字段向后兼容，导入校验并合并已知题目 ID。

@@ -24,6 +24,7 @@ import {
   ExternalLink,
   Check,
   GraduationCap,
+  BrainCircuit,
 } from "lucide-react";
 import { topics, topicById } from "./content/catalog";
 import { categories, levels } from "./content/types";
@@ -36,6 +37,8 @@ import { Principles, Complexity, Practice } from "./components/LessonPanels";
 import { Catalog } from "./components/Catalog";
 import { Learning } from "./components/Learning";
 import { Cases } from "./components/Cases";
+import { PracticeLibrary } from "./components/PracticeLibrary";
+import { problems } from "./content/problems";
 const categoryIcons = [
   Layers3,
   ChartNoAxesCombined,
@@ -43,6 +46,7 @@ const categoryIcons = [
   Shapes,
   Braces,
   GraduationCap,
+  BrainCircuit,
 ];
 const tabs = [
   ["experiment", "图解实验", ChartNoAxesCombined],
@@ -250,6 +254,15 @@ export default function App() {
           </button>
           <button
             className={
+              route.view === "practice" ? "nav-item active" : "nav-item"
+            }
+            onClick={() => navigate("practice")}
+          >
+            <GraduationCap size={20} />
+            练习库<span>{problems.length}</span>
+          </button>
+          <button
+            className={
               route.view === "learning" ? "nav-item active" : "nav-item"
             }
             onClick={() => navigate("learning")}
@@ -348,9 +361,11 @@ export default function App() {
                 ? "算法"
                 : route.view === "cases"
                   ? "探索"
-                  : route.view === "learning"
-                    ? "个人空间"
-                    : "学习"}
+                  : route.view === "practice"
+                    ? "练习库"
+                    : route.view === "learning"
+                      ? "个人空间"
+                      : "学习"}
             </span>
             <span>/</span>
             <strong>
@@ -358,9 +373,11 @@ export default function App() {
                 ? categories.find((c) => c.id === topic.category)!.name
                 : route.view === "cases"
                   ? "综合专题"
-                  : route.view === "learning"
-                    ? "我的学习"
-                    : "知识图谱"}
+                  : route.view === "practice"
+                    ? "练习库"
+                    : route.view === "learning"
+                      ? "我的学习"
+                      : "知识图谱"}
             </strong>
           </div>
           <div className="global-search">
@@ -519,6 +536,14 @@ export default function App() {
                 categories.some((c) => c.id === route.id) ? route.id : ""
               }
               favorites={data.favorites}
+            />
+          ) : route.view === "practice" ? (
+            <PracticeLibrary
+              key={route.id + "?" + route.params}
+              id={route.id}
+              topic={route.params.get("topic") || ""}
+              data={data}
+              update={update}
             />
           ) : route.view === "cases" ? (
             <Cases key={route.id} id={route.id} />

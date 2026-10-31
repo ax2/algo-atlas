@@ -249,6 +249,7 @@ export function Practice({
           </div>
         )}
         <h2>动手实验任务</h2>
+        <a className="button primary" href={`#/practice?topic=${topic.id}`}>进入本课专题练习库 →</a>
         <ol className="task-list">
           <li>先写下对下一步状态的预测，再点击“单步”。</li>
           <li>找到至少一帧，解释它如何维护“{topic.invariant}”。</li>

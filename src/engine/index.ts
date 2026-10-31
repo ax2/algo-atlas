@@ -5,6 +5,12 @@ import { graphs } from "./graphs";
 import { strategies } from "./strategies";
 import { strings } from "./strings";
 import { math } from "./math";
+import { teach } from "./teaching";
+import balancedSource from "./balanced.ts?raw";
+import { advanced, advancedIds } from "./advanced";
+import { ai } from "./ai";
+import advancedSource from "./advanced.ts?raw";
+import aiSource from "./ai.ts?raw";
 import sortingSource from "./sorting.ts?raw";
 import structuresSource from "./structures.ts?raw";
 import graphsSource from "./graphs.ts?raw";
@@ -12,8 +18,13 @@ import strategiesSource from "./strategies.ts?raw";
 import stringsSource from "./strings.ts?raw";
 import mathSource from "./math.ts?raw";
 export function runTrace(id: string, input: string, target = 5) {
+  const trace = computeTrace(id, input, target);
+  return teach(topicById[id], trace, input);
+}
+function computeTrace(id: string, input: string, target: number) {
   const topic = topicById[id];
   if (!topic) throw new Error("课程不存在");
+  if (advancedIds.includes(id)) return advanced(id, input);
   switch (topic.category) {
     case "structures":
       return id === "graph"
@@ -29,16 +40,25 @@ export function runTrace(id: string, input: string, target = 5) {
       return strings(id, input);
     case "math":
       return math(id, input);
+    case "ai":
+      return ai(id, input);
   }
 }
 export function engineSource(id: string) {
   const category = topicById[id].category;
   return {
-    structures: id === "graph" ? graphsSource : structuresSource,
+    structures: advancedIds.includes(id)
+      ? advancedSource
+      : id === "graph"
+        ? graphsSource
+        : ["avl", "red-black"].includes(id)
+          ? balancedSource
+          : structuresSource,
     sorting: sortingSource,
     graphs: graphsSource,
     patterns: strategiesSource,
     strings: stringsSource,
     math: mathSource,
+    ai: aiSource,
   }[category];
 }

@@ -4,6 +4,8 @@ export type Node = {
   x: number;
   y: number;
   color?: string;
+  subtitle?: string;
+  kind?: "point" | "centroid";
 };
 export type Edge = {
   from: string;
@@ -28,8 +30,23 @@ export type Frame = {
   cells?: [number, number][];
   stats: Record<string, number | string>;
   result?: unknown;
+  checkpoint?: boolean;
+  explanation?: {
+    why: string;
+    changes: string;
+    check: string;
+    predict: string;
+  };
+  inputState?: {
+    source: string[];
+    current?: string;
+    pending: string[];
+    processed: number;
+    label?: string;
+  };
 };
 export type Trace = {
+  source?: string[];
   frames: Frame[];
   kind: "bars" | "cells" | "graph" | "matrix" | "board";
   result: unknown;

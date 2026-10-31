@@ -1,10 +1,12 @@
 import { topicById } from "../content/catalog";
+import { problemById } from "../content/problems";
 export interface LearningData {
   version: 1;
   favorites: string[];
   completed: string[];
   notes: Record<string, string>;
   updatedAt: string;
+  exerciseCompleted?: string[];
 }
 export interface LearningRepository {
   load(): LearningData;
@@ -34,6 +36,15 @@ export function validateLearning(value: unknown): LearningData {
   };
   const favorites = ids(v.favorites),
     completed = ids(v.completed);
+  const exerciseCompleted = v.exerciseCompleted ?? [];
+  if (
+    !Array.isArray(exerciseCompleted) ||
+    exerciseCompleted.length > 5000 ||
+    exerciseCompleted.some(
+      (x) => typeof x !== "string" || !Object.hasOwn(problemById, x),
+    )
+  )
+    throw new Error("备份含未知练习。");
   if (!v.notes || typeof v.notes !== "object" || Array.isArray(v.notes))
     throw new Error("笔记格式错误。");
   const notes: Record<string, string> = {};
@@ -51,6 +62,7 @@ export function validateLearning(value: unknown): LearningData {
     favorites,
     completed,
     notes,
+    exerciseCompleted: [...new Set(exerciseCompleted as string[])],
     updatedAt: new Date().toISOString(),
   };
 }
@@ -87,6 +99,12 @@ export function mergeLearning(
     favorites: [...new Set([...current.favorites, ...incoming.favorites])],
     completed: [...new Set([...current.completed, ...incoming.completed])],
     notes,
+    exerciseCompleted: [
+      ...new Set([
+        ...(current.exerciseCompleted || []),
+        ...(incoming.exerciseCompleted || []),
+      ]),
+    ],
     updatedAt: new Date().toISOString(),
   };
 }

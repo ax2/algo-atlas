@@ -121,7 +121,7 @@ test("catalog search, complexity, mastery and integrated cases", async ({
   await expect(page.getByRole("status")).toContainText("回答正确");
   await page.getByRole("button", { name: "标记本课已掌握" }).click();
   await page.goto("/#/learning");
-  await expect(page.locator(".progress-banner")).toContainText("已掌握 1 / 65");
+  await expect(page.locator(".progress-banner")).toContainText("已掌握 1 / 79");
   for (const id of [
     "routes",
     "cache",
@@ -173,13 +173,11 @@ test("backup download/import, keyboard dialog and zero-valued search share", asy
     notes: { quick: "导入的笔记" },
     updatedAt: new Date().toISOString(),
   };
-  await page
-    .locator("input[type=file]")
-    .setInputFiles({
-      name: "backup.json",
-      mimeType: "application/json",
-      buffer: Buffer.from(JSON.stringify(incoming)),
-    });
+  await page.locator("input[type=file]").setInputFiles({
+    name: "backup.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(incoming)),
+  });
   await expect(page.getByRole("status")).toContainText("已合并备份");
   await page.getByRole("button", { name: "学习笔记", exact: true }).click();
   await expect(page.locator(".learning-list")).toContainText("导入的笔记");

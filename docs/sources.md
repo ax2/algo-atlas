@@ -21,3 +21,14 @@
 - 图/树图中的位置是布局坐标，不是真实内存地址。
 
 评级解释：难度是学习所需前置知识；重要性是其在后续课程中的基础作用；常用度是教学编辑对通用工程中的适用广度判断。不提供虚构调查比例或实时热门榜。
+
+## Stage 003 扩展资料（2026-10-30 核查）
+
+- [Princeton 左倾红黑树](https://algs4.cs.princeton.edu/33balanced/)：旋转与颜色翻转的性质核对。
+- [Sleator / Tarjan 原始 Splay 论文入口](https://www.cs.cmu.edu/~sleator/papers/Self-Adjusting.htm)：摊还界与单次界的区分。
+- [CP-Algorithms Treap](https://cp-algorithms.com/data_structures/treap.html)、[Segment Tree](https://cp-algorithms.com/data_structures/segment_tree.html)、[Sparse Table](https://cp-algorithms.com/data_structures/sparse-table.html)：机制与复杂度核对。
+- [scikit-learn 分类树](https://scikit-learn.org/stable/modules/tree.html)、[聚类](https://scikit-learn.org/stable/modules/clustering.html)、[近邻](https://scikit-learn.org/stable/modules/neighbors.html)：算法前提与工程边界。
+- [Stanford CS231n 反向传播](https://cs231n.github.io/optimization-2/)：链式法则与计算图。
+- [Attention Is All You Need](https://arxiv.org/abs/1706.03762)：缩放点积注意力公式及来源。
+
+课程文字、题目与参考实现均独立编写。没有复制外部竞赛题库题面；这些题是原创训练，不冒称某赛事真题。

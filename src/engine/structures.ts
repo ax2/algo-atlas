@@ -1,5 +1,6 @@
+import { balanced } from "./balanced";
 import { numbers, range, recorder } from "./model";
-import type { Edge, Node, Trace } from "./model";
+import type { Edge, Node, Trace, Frame } from "./model";
 type Tree = {
   value: number;
   left?: Tree;
@@ -31,7 +32,18 @@ function treePicture(root: Tree | undefined) {
   return { nodes, edges };
 }
 export function structures(id: string, raw: string): Trace {
-  const { frames, add } = recorder();
+  const { frames, add: record } = recorder();
+  let inputState: Frame["inputState"];
+  const feed = (source: (number | string)[], index: number) => {
+    inputState = {
+      source: source.map(String),
+      current: String(source[index]),
+      pending: source.slice(index + 1).map(String),
+      processed: index,
+    };
+  };
+  const add = (title: string, detail: string, extra: Partial<Frame> = {}) =>
+    record(title, detail, { inputState, ...extra });
   let result: unknown;
   let kind: Trace["kind"] = "cells";
   if (id === "trie") {
@@ -67,7 +79,8 @@ export function structures(id: string, raw: string): Trace {
       return { nodes, edges };
     };
     add("空字典树", "根节点代表空前缀。", picture());
-    for (const word of words) {
+    for (const [inputIndex, word] of words.entries()) {
+      feed(words, inputIndex);
       for (let i = 1; i <= word.length; i++) {
         const p = word.slice(0, i),
           exists = all.has(p);
@@ -88,102 +101,7 @@ export function structures(id: string, raw: string): Trace {
     kind = "graph";
     result = [...ends];
   } else if (["avl", "red-black"].includes(id)) {
-    const values =
-      raw === "1" ? [30, 10, 20, 40, 50, 25] : [30, 20, 10, 25, 40, 50, 5];
-    let root: Tree | undefined;
-    const height = (p: Tree | undefined) => p?.height || 0;
-    const update = (p: Tree) =>
-      (p.height = 1 + Math.max(height(p.left), height(p.right)));
-    const left = (p: Tree) => {
-      const q = p.right!;
-      p.right = q.left;
-      q.left = p;
-      q.red = p.red;
-      p.red = true;
-      update(p);
-      update(q);
-      return q;
-    };
-    const right = (p: Tree) => {
-      const q = p.left!;
-      p.left = q.right;
-      q.right = p;
-      q.red = p.red;
-      p.red = true;
-      update(p);
-      update(q);
-      return q;
-    };
-    const insert = (p: Tree | undefined, v: number): Tree => {
-      if (!p) return { value: v, height: 1, red: id === "red-black" };
-      if (v < p.value) p.left = insert(p.left, v);
-      else if (v > p.value) p.right = insert(p.right, v);
-      else return p;
-      update(p);
-      if (id === "avl") {
-        const balance = height(p.left) - height(p.right);
-        if (balance > 1) {
-          if (v > p.left!.value) {
-            p.left = left(p.left!);
-            add("LR：先左旋左子树", "先把折线变为直线。", treePicture(p));
-          }
-          p = right(p);
-          add(
-            "右旋修复平衡",
-            "保留中序顺序，同时降低较重一侧高度。",
-            treePicture(p),
-          );
-        }
-        if (balance < -1) {
-          if (v < p.right!.value) {
-            p.right = right(p.right!);
-            add("RL：先右旋右子树", "先把折线变为直线。", treePicture(p));
-          }
-          p = left(p);
-          add("左旋修复平衡", "局部旋转后重新计算高度。", treePicture(p));
-        }
-      } else {
-        if (p.right?.red && !p.left?.red) {
-          p = left(p);
-          add(
-            "左旋红链接",
-            "采用左倾红黑树插入变体，把红链接保持向左。",
-            treePicture(p),
-          );
-        }
-        if (p.left?.red && p.left.left?.red) {
-          p = right(p);
-          add(
-            "右旋连续红链接",
-            "避免两个红链接连续出现在同一路径。",
-            treePicture(p),
-          );
-        }
-        if (p.left?.red && p.right?.red) {
-          p.red = !p.red;
-          p.left.red = false;
-          p.right.red = false;
-          add(
-            "拆分临时 4 节点",
-            "两孩子变黑，红色向上转移；根最终涂黑。",
-            treePicture(p),
-          );
-        }
-      }
-      return p;
-    };
-    add("选定插入序列", values.join(" → "), { values });
-    for (const v of values) {
-      root = insert(root, v);
-      if (id === "red-black") root.red = false;
-      add(
-        "插入后的完整树",
-        `已插入 ${v}。${id === "avl" ? "每个节点高度差不超过 1。" : "橙色表示红节点，其余为黑节点；空叶均为黑。"}`,
-        treePicture(root),
-      );
-    }
-    result = root;
-    kind = "graph";
+    return balanced(id, raw);
   } else if (id === "b-tree") {
     type B = { keys: number[]; children: B[] };
     const root: B = { keys: [], children: [] };
@@ -241,7 +159,8 @@ export function structures(id: string, raw: string): Trace {
       "本实验展示 B 树插入与分裂；B+ 树叶链在原理部分对照。",
       picture(),
     );
-    for (const v of input) {
+    for (const [inputIndex, v] of input.entries()) {
+      feed(input, inputIndex);
       if (root.keys.length === 3) {
         root.children = [
           { keys: [...root.keys], children: [...root.children] },
@@ -316,7 +235,8 @@ export function structures(id: string, raw: string): Trace {
     if (id === "array") {
       let capacity = 2;
       const out: number[] = [];
-      for (const v of a) {
+      for (const [inputIndex, v] of a.entries()) {
+        feed(a, inputIndex);
         if (out.length === capacity) {
           capacity *= 2;
           add(
@@ -337,24 +257,25 @@ export function structures(id: string, raw: string): Trace {
       }
       result = out;
     } else if (id === "linked-list") {
-      const out: number[] = [];
+      const out: number[] = [],
+        nodeIds: number[] = [];
       const picture = () => ({
         nodes: out.map((v, i) => ({
-          id: String(i),
+          id: String(nodeIds[i]),
           label: String(v),
           x: 35 + (i * 610) / Math.max(1, out.length - 1),
           y: 160,
         })),
-        edges: out
-          .slice(1)
-          .map((_, i) => ({
-            from: String(i),
-            to: String(i + 1),
-            directed: true,
-          })),
+        edges: out.slice(1).map((_, i) => ({
+          from: String(nodeIds[i]),
+          to: String(nodeIds[i + 1]),
+          directed: true,
+        })),
       });
-      for (const v of a) {
+      for (const [inputIndex, v] of a.entries()) {
+        feed(a, inputIndex);
         out.push(v);
+        nodeIds.push(inputIndex);
         add(
           "连接尾节点",
           `让旧尾的 next 指向新节点 ${v}，新尾指向空。`,
@@ -363,6 +284,12 @@ export function structures(id: string, raw: string): Trace {
       }
       if (out.length > 2) {
         const removed = out.splice(1, 1)[0];
+        nodeIds.splice(1, 1);
+        inputState = {
+          source: a.map(String),
+          pending: [],
+          processed: a.length,
+        };
         add(
           "删除已知前驱后的节点",
           `将头节点直接连接原第三项，移除 ${removed}。`,
@@ -375,6 +302,7 @@ export function structures(id: string, raw: string): Trace {
       const out: number[] = [],
         removed: number[] = [];
       for (let i = 0; i < a.length; i++) {
+        feed(a, i);
         if (id === "deque" && i % 2 === 0) out.unshift(a[i]);
         else out.push(a[i]);
         add(
@@ -387,6 +315,7 @@ export function structures(id: string, raw: string): Trace {
           },
         );
       }
+      inputState = { source: a.map(String), pending: [], processed: a.length };
       while (out.length) {
         const v = id === "stack" ? out.pop()! : out.shift()!;
         removed.push(v);
@@ -398,7 +327,8 @@ export function structures(id: string, raw: string): Trace {
       result = removed;
     } else if (id === "hash-table") {
       const buckets: number[][] = range(7).map(() => []);
-      for (const v of a) {
+      for (const [inputIndex, v] of a.entries()) {
+        feed(a, inputIndex);
         const b = v % 7;
         if (!buckets[b].includes(v)) buckets[b].push(v);
         add(
@@ -417,7 +347,8 @@ export function structures(id: string, raw: string): Trace {
     } else if (id === "bloom") {
       const bits = Array(24).fill(0),
         hashes = (x: number) => [x % 24, (x * 7 + 3) % 24, (x * 11 + 5) % 24];
-      for (const v of a) {
+      for (const [inputIndex, v] of a.entries()) {
+        feed(a, inputIndex);
         const hs = hashes(v);
         hs.forEach((h) => (bits[h] = 1));
         add(
@@ -443,7 +374,8 @@ export function structures(id: string, raw: string): Trace {
       result = { bits, probe: x, maybe };
     } else if (id === "lru") {
       const order: number[] = [];
-      for (const v of a) {
+      for (const [inputIndex, v] of a.entries()) {
+        feed(a, inputIndex);
         const pos = order.indexOf(v),
           hit = pos >= 0;
         let evicted: number | undefined;
@@ -474,7 +406,8 @@ export function structures(id: string, raw: string): Trace {
         if (v > p.value) p.right = insert(p.right, v);
         return p;
       };
-      for (const v of a) {
+      for (const [inputIndex, v] of a.entries()) {
+        feed(a, inputIndex);
         root = insert(root, v);
         add(
           "按大小进入子树",
@@ -497,14 +430,13 @@ export function structures(id: string, raw: string): Trace {
             y: 35 + d * 70,
           };
         }),
-        edges: h
-          .slice(1)
-          .map((_, i) => ({
-            from: String(Math.floor(i / 2)),
-            to: String(i + 1),
-          })),
+        edges: h.slice(1).map((_, i) => ({
+          from: String(Math.floor(i / 2)),
+          to: String(i + 1),
+        })),
       });
-      for (const v of a) {
+      for (const [inputIndex, v] of a.entries()) {
+        feed(a, inputIndex);
         h.push(v);
         add("插入完全树末尾", `加入 ${v}，随后沿父链上浮。`, picture());
         let i = h.length - 1;
@@ -596,6 +528,7 @@ export function structures(id: string, raw: string): Trace {
         x2: number,
       ): number => {
         const index = nodes.length;
+        if (key !== "root") edges.push({ from: key.slice(0, -1), to: key });
         nodes.push({
           id: key,
           label: `[${l},${r}]`,
@@ -603,6 +536,7 @@ export function structures(id: string, raw: string): Trace {
           y: 30 + d * 65,
         });
         if (l === r) {
+          feed(a, l);
           nodes[index].label = String(a[l]);
           add("叶子保存单点值", `区间 [${l},${r}] = ${a[l]}。`, {
             nodes,
@@ -612,11 +546,18 @@ export function structures(id: string, raw: string): Trace {
         }
         const m = Math.floor((l + r) / 2),
           x = (x1 + x2) / 2;
-        edges.push({ from: key, to: key + "L" }, { from: key, to: key + "R" });
+
         const sum =
           build(l, m, d + 1, key + "L", x1, x) +
           build(m + 1, r, d + 1, key + "R", x, x2);
         nodes[index].label = `${l}–${r}: ${sum}`;
+        inputState = {
+          source: a.map(String),
+          current: `区间 [${l},${r}]`,
+          pending: a.slice(r + 1).map(String),
+          processed: r + 1,
+          label: "合并已构建的子区间",
+        };
         add("合并子区间", `sum[${l},${r}] = ${sum}。`, { nodes, edges });
         return sum;
       };
@@ -624,12 +565,19 @@ export function structures(id: string, raw: string): Trace {
       kind = "graph";
     } else throw new Error(`未知结构实验 ${id}`);
   }
+  if (inputState && frames.length)
+    frames[frames.length - 1].inputState = {
+      source: inputState.source,
+      pending: [],
+      processed: inputState.source.length,
+      label: "输入处理结束",
+    };
   return {
     frames,
     kind,
     result,
     caption: ["avl", "red-black", "b-tree", "skip-list"].includes(id)
-      ? "机制实验：可切换精选输入，逐步观察维护规则。中间旋转画面展示当前局部子树。"
+      ? "机制实验：可切换精选输入，逐步观察维护规则。构建与维护过程展示完整结构。"
       : "操作实验：帧是独立快照，可安全回退。示意空间与真实内存布局不同。",
   };
 }

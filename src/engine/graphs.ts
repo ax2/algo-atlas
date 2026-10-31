@@ -1,5 +1,5 @@
 import { recorder, range } from "./model";
-import type { Edge, Node, Trace } from "./model";
+import type { Edge, Node, Trace, Frame } from "./model";
 export type Link = [number, number, number];
 export function graphScenario(
   id: string,
@@ -94,10 +94,11 @@ export function graphs(id: string, variant = 0): Trace {
     x: [65, 240, 240, 440, 440, 615][i],
     y: [160, 60, 255, 60, 255, 160][i],
   }));
+  let reversed = false;
   const edge = (path: Link[] = [], labels = false): Edge[] =>
     links.map(([u, v, w]) => ({
-      from: String(u),
-      to: String(v),
+      from: String(reversed ? v : u),
+      to: String(reversed ? u : v),
       label:
         labels || !["bfs", "dfs", "topological", "scc"].includes(id)
           ? String(w)
@@ -109,6 +110,11 @@ export function graphs(id: string, variant = 0): Trace {
     }));
   const { frames, add } = recorder();
   let result: unknown;
+  let inputState: Frame["inputState"];
+  const graphInput = links.map(
+    ([u, v, w]) =>
+      `${base[u].label}${directed ? "→" : "—"}${base[v].label} (${w})`,
+  );
   const emit = (
     title: string,
     detail: string,
@@ -118,6 +124,7 @@ export function graphs(id: string, variant = 0): Trace {
     dist?: number[],
   ) =>
     add(title, detail, {
+      inputState,
       nodes: base.map((p, i) => ({
         ...p,
         label:
@@ -125,7 +132,20 @@ export function graphs(id: string, variant = 0): Trace {
           (dist ? ` · ${Number.isFinite(dist[i]) ? dist[i] : "∞"}` : ""),
         color: i === current ? "orange" : seen.includes(i) ? "mint" : undefined,
       })),
-      edges: edge(path),
+      edges: [
+        ...edge(path),
+        ...(id === "max-flow"
+          ? path
+              .filter(([u, v]) => !links.some(([a, b]) => a === u && b === v))
+              .map(([u, v, w]) => ({
+                from: String(u),
+                to: String(v),
+                label: `撤回 ${w}`,
+                directed: true,
+                active: true,
+              }))
+          : []),
+      ],
       stats: { 顶点: n, 边: links.length },
     });
   emit(
@@ -155,12 +175,24 @@ export function graphs(id: string, variant = 0): Trace {
     const seen = new Set<number>([0]),
       frontier = [0],
       order: number[] = [];
-    while (frontier.length) {
-      const u = id === "bfs" ? frontier.shift()! : frontier.pop()!;
+    let head = 0;
+    while (frontier.length > head) {
+      const u = id === "bfs" ? frontier[head++] : frontier.pop()!;
       order.push(u);
+      inputState = {
+        source: graphInput,
+        current: base[u].label,
+        pending: (id === "bfs"
+          ? frontier.slice(head)
+          : [...frontier].reverse()
+        ).map((v) => base[v].label),
+        processed: order.length,
+        label:
+          id === "bfs" ? "BFS 队列（队首在左）" : "DFS 栈（下一次弹出的在左）",
+      };
       emit(
         id === "bfs" ? "队首出队" : "栈顶展开",
-        `访问 ${base[u].label}；待处理：${frontier.map((v) => base[v].label).join(", ") || "空"}。`,
+        `访问 ${base[u].label}；待处理：${(id === "bfs" ? frontier.slice(head) : [...frontier].reverse()).map((v) => base[v].label).join(", ") || "空"}。`,
         order,
         u,
       );
@@ -168,6 +200,13 @@ export function graphs(id: string, variant = 0): Trace {
         if (!seen.has(e[1])) {
           seen.add(e[1]);
           frontier.push(e[1]);
+          inputState = {
+            ...inputState!,
+            pending: (id === "bfs"
+              ? frontier.slice(head)
+              : [...frontier].reverse()
+            ).map((v) => base[v].label),
+          };
           emit(
             "发现新顶点",
             `${base[e[1]].label} 首次发现，加入${id === "bfs" ? "队列" : "栈"}。`,
@@ -186,13 +225,15 @@ export function graphs(id: string, variant = 0): Trace {
   } else if (id === "dijkstra" || id === "astar") {
     const d = Array(n).fill(Infinity);
     d[0] = 0;
-    const done: number[] = [];
+    const done: number[] = [],
+      fixed = Array(n).fill(false);
     while (done.length < n) {
       let u = -1;
       for (let i = 0; i < n; i++)
-        if (!done.includes(i) && (u < 0 || d[i] < d[u])) u = i;
+        if (!fixed[i] && (u < 0 || d[i] < d[u])) u = i;
       if (u < 0 || !Number.isFinite(d[u])) break;
       done.push(u);
+      fixed[u] = true;
       emit(
         "确定最小距离",
         `${base[u].label} 的距离 ${d[u]} 已确定。${id === "astar" ? "本实验 h=0，因此 f=g。" : ""}`,
@@ -309,8 +350,9 @@ export function graphs(id: string, variant = 0): Trace {
       [],
       indeg,
     );
-    while (q.length) {
-      const u = q.shift()!;
+    let head = 0;
+    while (head < q.length) {
+      const u = q[head++];
       order.push(u);
       for (const [, v] of adj[u]) if (--indeg[v] === 0) q.push(v);
       emit(
@@ -358,14 +400,20 @@ export function graphs(id: string, variant = 0): Trace {
             chosen,
           );
       }
-    } else
+    } else {
+      const inTree = new Set(used);
       while (used.length < n) {
-        const e = links
-          .filter(([u, v]) => used.includes(u) !== used.includes(v))
-          .sort((a, b) => a[2] - b[2])[0];
+        let e: Link | undefined;
+        for (const candidate of links) {
+          const [u, v, w] = candidate;
+          if (inTree.has(u) !== inTree.has(v) && (!e || w < e[2]))
+            e = candidate;
+        }
         if (!e) break;
         const [u, v, w] = e;
-        used.push(used.includes(u) ? v : u);
+        const next = inTree.has(u) ? v : u;
+        used.push(next);
+        inTree.add(next);
         chosen.push(e);
         emit(
           "选最轻跨割边",
@@ -375,6 +423,7 @@ export function graphs(id: string, variant = 0): Trace {
           chosen,
         );
       }
+    }
     const weight = chosen.reduce((s, e) => s + e[2], 0);
     result = { edges: chosen, weight };
     emit(
@@ -397,6 +446,8 @@ export function graphs(id: string, variant = 0): Trace {
     const rev: number[][] = range(n).map(() => []);
     for (const [u, v] of links) rev[v].push(u);
     seen.clear();
+    reversed = true;
+    emit("反转全部有向边", "现在画面显示转置图，按原图逆后序逐个搜索。 ");
     const components: number[][] = [];
     const collect = (u: number, c: number[]) => {
       seen.add(u);
@@ -424,14 +475,20 @@ export function graphs(id: string, variant = 0): Trace {
   } else if (id === "max-flow") {
     const residual = range(n).map(() => Array(n).fill(0));
     for (const [u, v, w] of links) residual[u][v] += w;
+    const neighbors: number[][] = range(n).map((u) => [
+      ...new Set(
+        links.flatMap(([a, b]) => (a === u ? [b] : b === u ? [a] : [])),
+      ),
+    ]);
     let total = 0;
     while (true) {
       const parent = Array(n).fill(-1),
         q = [0];
       parent[0] = 0;
-      while (q.length && parent[5] < 0) {
-        const u = q.shift()!;
-        for (let v = 0; v < n; v++)
+      let head = 0;
+      while (head < q.length && parent[5] < 0) {
+        const u = q[head++];
+        for (const v of neighbors[u])
           if (parent[v] < 0 && residual[u][v] > 0) {
             parent[v] = u;
             q.push(v);

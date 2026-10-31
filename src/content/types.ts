@@ -1,5 +1,5 @@
 export type Category =
-  "structures" | "sorting" | "graphs" | "patterns" | "strings" | "math";
+  "structures" | "sorting" | "graphs" | "patterns" | "strings" | "math" | "ai";
 export type Topic = {
   id: string;
   name: string;
@@ -23,6 +23,7 @@ export type Topic = {
   input: string;
   inputHint: string;
   mode: "numbers" | "text" | "scenario";
+  scenarios?: [string, string];
 };
 export const categories: { id: Category; name: string; description: string }[] =
   [
@@ -40,5 +41,10 @@ export const categories: { id: Category; name: string; description: string }[] =
     },
     { id: "strings", name: "字符串", description: "识别文本背后的规律" },
     { id: "math", name: "数学与几何", description: "用计算理解数量和空间" },
+    {
+      id: "ai",
+      name: "人工智能与机器学习",
+      description: "从优化、学习到注意力与博弈搜索",
+    },
   ];
 export const levels = ["入门", "基础", "进阶", "挑战"];
