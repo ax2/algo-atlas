@@ -32,6 +32,9 @@
 - 额外脚本检查 1366×600 短桌面与 360×640 浅色窄屏：三个 AI 专题均无内部溢出，实验台均处于视口内；正常模式显示更新脉冲，系统减少动画后脉冲关闭而变化标记仍在。
 - 已检查桌面/手机截图，保存在本次任务 outputs：`stage009-*-desktop.png`、`stage009-*-mobile.png`、`stage009-*-short-desktop.png`、`stage009-*-narrow-light.png`。这些是 Chrome 自动化及模拟视口证据，不是真实手机验收。
 
-## 发布进度
+## 发布记录
 
-待推送功能提交并独立核对 GitHub CI。
+- 功能提交：`983f825ad92f60a26870f7516b6576bf5e2ce4da`，已推送 `ax2/algo-atlas` 的 `main`。
+- 独立核对 [GitHub CI 41179159147](https://github.com/ax2/algo-atlas/actions/runs/41179159147)：success；数值测试与生产构建通过，38 个浏览器回归全部通过，无失败或重试。浏览器验证耗时 3.9 分钟，整项 CI 4 分 44 秒。
+- CI 的运行时代际提示来自现有 actions 和 ubuntu-latest，不是测试失败；本阶段未修改工作流。
+- 本日志的 CI 结果以独立文档提交回填；功能代码保持上述已验证提交。
