@@ -1,3 +1,8 @@
+import {
+  calculateValue,
+  selectCell,
+  type ValueSelection,
+} from "../engine/ai-calculation";
 import { linkedData, selectionKey } from "../engine/ai-links";
 import type { DiagramSelection } from "../engine/model";
 import { useEffect, useMemo, useState, useRef } from "react";
@@ -125,6 +130,7 @@ export function AILab({ id }: { id: LabId }) {
     [group, setGroup] = useState("all"),
     [share, setShare] = useState(""),
     [selection, setSelection] = useState<DiagramSelection>(),
+    [valueSelection, setValueSelection] = useState<ValueSelection>(),
     [selectionVisit, setSelectionVisit] = useState(0),
     [linkedTensorName, setLinkedTensorName] = useState<string>(),
     [panel, setPanel] = useState("讲解"),
@@ -134,6 +140,18 @@ export function AILab({ id }: { id: LabId }) {
       () => matchMedia("(max-width: 760px)").matches,
     );
   const stage = useRef<HTMLDivElement>(null);
+  const calculationBack = useRef<HTMLButtonElement>(null),
+    returnFocus = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (valueSelection) calculationBack.current?.focus({ preventScroll: true });
+  }, [valueSelection]);
+  const closeCalculation = () => {
+    setValueSelection(undefined);
+    requestAnimationFrame(() => {
+      if (returnFocus.current?.isConnected)
+        returnFocus.current.focus({ preventScroll: true });
+    });
+  };
   useEffect(() => {
     const sync = () =>
       setFullscreen(document.fullscreenElement === stage.current);
@@ -177,6 +195,7 @@ export function AILab({ id }: { id: LabId }) {
   };
   const change = (key: keyof LabConfig, value: number) => {
     setSelection(undefined);
+    setValueSelection(undefined);
     setConfig({ ...config, [key]: value });
     jump(0);
   };
@@ -200,8 +219,57 @@ export function AILab({ id }: { id: LabId }) {
     linked?.tensors.find((t) => t.name === linkedTensorName) ||
     linked?.tensors[0]
   )?.parameterGroups;
-  const focusedUpdates =
-    panel === "联动" && linked
+  const calculation = useMemo(
+    () =>
+      valueSelection
+        ? calculateValue(
+            id,
+            frame,
+            config,
+            valueSelection,
+            trace.frames.slice(0, position + 1),
+          )
+        : undefined,
+    [id, frame, config, valueSelection, trace, position],
+  );
+  const chooseCell = (
+    tensor: import("../engine/ai-labs").Tensor,
+    row: number,
+    col: number,
+  ) => {
+    returnFocus.current = document.activeElement as HTMLElement;
+    setValueSelection(selectCell(tensor, row, col));
+    setPlaying(false);
+  };
+  const displayDiagram = calculation?.nodeValues
+    ? {
+        ...frame.diagram,
+        nodes: frame.diagram.nodes?.map((n) => ({
+          ...n,
+          subtitle: calculation.nodeValues![n.id] ?? n.subtitle,
+        })),
+      }
+    : frame.diagram;
+  const chooseParameter = (
+    name: string,
+    field: ValueSelection["field"] = "after",
+  ) => {
+    returnFocus.current = document.activeElement as HTMLElement;
+    setValueSelection({
+      key: "parameter",
+      row: 0,
+      col: 0,
+      parameter: name,
+      field,
+    });
+    setParameter(name);
+    setPlaying(false);
+  };
+  const focusedUpdates = calculation
+    ? calculation.update
+      ? [calculation.update]
+      : []
+    : panel === "联动" && linked
       ? frame.updates.filter(
           (p) =>
             linked.parameters.includes(p.name) &&
@@ -245,6 +313,7 @@ export function AILab({ id }: { id: LabId }) {
         <div
           className="ai-workspace single-screen"
           data-panel={panel}
+          data-inspecting={!!calculation}
           data-still={!!still}
           ref={stage}
         >
@@ -322,22 +391,26 @@ export function AILab({ id }: { id: LabId }) {
                     frame={
                       compact
                         ? {
-                            ...frame.diagram,
-                            nodes: frame.diagram.nodes?.map((n) => ({
+                            ...displayDiagram,
+                            nodes: displayDiagram.nodes?.map((n) => ({
                               ...n,
                               x: n.x * 0.7,
                               y: n.y * 0.7,
                             })),
                           }
-                        : frame.diagram
+                        : displayDiagram
                     }
                     kind="graph"
                     fitContent
                     tick={position}
                     effects={effects}
                     milliseconds={speed}
-                    selection={panel === "联动" ? selection : undefined}
+                    selection={
+                      !calculation && panel === "联动" ? selection : undefined
+                    }
+                    highlights={calculation}
                     onSelect={(value) => {
+                      setValueSelection(undefined);
                       setSelection(value);
                       setLinkedTensorName(undefined);
                       setSelectionVisit((v) => v + 1);
@@ -362,36 +435,60 @@ export function AILab({ id }: { id: LabId }) {
                     <select
                       aria-label="观察参数"
                       value={focus.name}
-                      onChange={(e) => setParameter(e.target.value)}
+                      onChange={(e) => chooseParameter(e.target.value)}
                     >
                       {focusedUpdates.map((p) => (
                         <option key={p.name}>{p.name}</option>
                       ))}
                     </select>
-                    <span>{rl ? "方向 = −TD" : "η × 梯度"}</span>
+                    <span>{rl ? "新 = 旧 + α·TD" : "新 = 旧 − η·∇"}</span>
                   </div>
                   {backward || updated ? (
-                    <div className="ai-update-equation">
-                      <span>{fmt(focus.before)}</span>
-                      <span>−</span>
-                      <span>
-                        {config.rate} × ({fmt(focus.gradient)})
-                      </span>
-                      <span>=</span>
-                      <motion.strong
-                        key={`${focus.name}-${focus.after}`}
-                        initial={still ? false : { opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
+                    <div
+                      className="ai-update-equation update-terms"
+                      aria-label="旧值、梯度、学习率、新值"
+                    >
+                      <span
+                        data-term="before"
+                        data-picked={
+                          calculation?.field === "before" || undefined
+                        }
                       >
-                        <span
+                        <small>旧值</small>
+                        <strong>{fmt(focus.before)}</strong>
+                      </span>
+                      <span
+                        data-term="gradient"
+                        data-picked={
+                          calculation?.field === "gradient" || undefined
+                        }
+                      >
+                        <small>{rl ? "方向 −TD" : "梯度 ∇"}</small>
+                        <strong>{fmt(focus.gradient)}</strong>
+                      </span>
+                      <span data-term="rate">
+                        <small>{rl ? "学习率 α" : "学习率 η"}</small>
+                        <strong>{config.rate}</strong>
+                      </span>
+                      <span
+                        data-term="after"
+                        data-picked={
+                          calculation?.field === "after" || undefined
+                        }
+                      >
+                        <small>{updated ? "新值" : "预览"}</small>
+                        <motion.strong
+                          key={`${focus.name}-${focus.after}`}
+                          initial={still ? false : { opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
                           data-changed={
                             (updated && focus.after !== focus.before) ||
                             undefined
                           }
                         >
                           {fmt(focus.after)}
-                        </span>
-                      </motion.strong>
+                        </motion.strong>
+                      </span>
                     </div>
                   ) : (
                     <div className="ai-update-equation">
@@ -403,12 +500,20 @@ export function AILab({ id }: { id: LabId }) {
               ) : (
                 <>
                   <strong>
-                    {panel === "联动" && linked ? "关联说明" : "等待环境反馈"}
+                    {calculation
+                      ? calculation.sample === undefined
+                        ? "数值推导"
+                        : `数值推导 · 样本 ${calculation.sample}`
+                      : panel === "联动" && linked
+                        ? "关联说明"
+                        : "等待环境反馈"}
                   </strong>
                   <span>
-                    {panel === "联动" && linked
-                      ? linked.note
-                      : "先选择行动，再用奖励和下一状态计算 Q 的更新方向。"}
+                    {calculation
+                      ? "已高亮相关节点与路径 · 观察面板查看逐步计算"
+                      : panel === "联动" && linked
+                        ? linked.note
+                        : "先选择行动，再用奖励和下一状态计算 Q 的更新方向。"}
                   </span>
                 </>
               )}
@@ -461,6 +566,7 @@ export function AILab({ id }: { id: LabId }) {
                   onClick={() => {
                     const u = new URL(location.href);
                     u.hash = `/cases/${id}?${new URLSearchParams({ ...Object.fromEntries(Object.entries(config).map(([k, v]) => [k, String(v)])), step: String(position) })}`;
+                    setValueSelection(undefined);
                     setShare(u.href);
                     setPanel("分享");
                   }}
@@ -510,7 +616,11 @@ export function AILab({ id }: { id: LabId }) {
               </label>
             </div>
           </section>
-          <aside className="ai-inspector" aria-label="AI 实验观察面板">
+          <aside
+            className="ai-inspector"
+            aria-label="AI 实验观察面板"
+            data-calculating={!!calculation}
+          >
             <div className="ai-current-step">
               <span>
                 {phaseNames[frame.phase]} / {frame.iteration}
@@ -523,6 +633,7 @@ export function AILab({ id }: { id: LabId }) {
                   key={name}
                   aria-pressed={panel === name}
                   onClick={() => {
+                    setValueSelection(undefined);
                     if (name === "联动" && panel !== "联动") {
                       setLinkedTensorName(undefined);
                       setParameter("");
@@ -534,6 +645,23 @@ export function AILab({ id }: { id: LabId }) {
                 </button>
               ))}
             </div>
+            {calculation && (
+              <section className="ai-calculation" aria-label="所选数值计算过程">
+                <button
+                  className="text-button calculation-back"
+                  ref={calculationBack}
+                  onClick={closeCalculation}
+                >
+                  ← 返回数值表
+                </button>
+                <AdaptiveNotes
+                  key={`${position}-${JSON.stringify(valueSelection)}`}
+                  className="ai-derivation"
+                  label="数值推导分页"
+                  blocks={calculation.blocks}
+                />
+              </section>
+            )}
             {panel === "讲解" && (
               <AdaptiveNotes
                 key={`notes-${position}`}
@@ -563,6 +691,7 @@ export function AILab({ id }: { id: LabId }) {
                   still={!!still}
                   context={`联动：${linked.title} · 点击数值检查`}
                   onParameter={setParameter}
+                  onCell={chooseCell}
                   onTensorChange={(index) => {
                     setLinkedTensorName(linked.tensors[index].name);
                     setParameter("");
@@ -583,6 +712,7 @@ export function AILab({ id }: { id: LabId }) {
             {panel === "张量" && (
               <TensorView
                 key={`${frame.phase}-${frame.iteration}`}
+                onCell={chooseCell}
                 frame={frame}
                 still={!!still}
               />
@@ -608,6 +738,10 @@ export function AILab({ id }: { id: LabId }) {
                   key={`${position}-${selectedGroup}`}
                   className="ai-ledger"
                   label="参数账本分页"
+                  onAction={(action) => {
+                    const [name, field] = action.split("|");
+                    chooseParameter(name, field as ValueSelection["field"]);
+                  }}
                   blocks={[
                     {
                       title: updated
@@ -639,11 +773,21 @@ export function AILab({ id }: { id: LabId }) {
                               )
                               .map((p) => [
                                 p.name,
-                                fmt(p.before),
-                                backward || updated
-                                  ? fmt(p.gradient)
-                                  : "待计算",
                                 {
+                                  value: fmt(p.before),
+                                  changed: false,
+                                  action: `${p.name}|before`,
+                                },
+                                {
+                                  value:
+                                    backward || updated
+                                      ? fmt(p.gradient)
+                                      : "待计算",
+                                  changed: false,
+                                  action: `${p.name}|gradient`,
+                                },
+                                {
+                                  action: `${p.name}|after`,
                                   value: fmt(p.after),
                                   changed: updated && p.after !== p.before,
                                 },

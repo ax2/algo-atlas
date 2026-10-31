@@ -12,11 +12,13 @@ export function TensorView({
   onParameter,
   onTensorChange,
   context,
+  onCell,
 }: {
   frame: LabFrame;
   still: boolean;
   tensors?: Tensor[];
   context?: string;
+  onCell?: (tensor: Tensor, row: number, col: number) => void;
   onParameter?: (name: string) => void;
   onTensorChange?: (index: number) => void;
 }) {
@@ -48,6 +50,8 @@ export function TensorView({
   }, [tensor, frame, size.cols]);
   useLayoutEffect(() => {
     const measure = () => {
+      // The derivation temporarily covers this table. Preserve its page and cell inspection.
+      if (!box.current?.clientWidth || !box.current.clientHeight) return;
       const rows = Math.max(
         1,
         Math.floor(
@@ -155,6 +159,7 @@ export function TensorView({
                             ? `单元格 [${r + i},${j}] ${show(before)} → ${show(value)}`
                             : `单元格 [${r + i},${j}] = ${value}`,
                         );
+                        onCell?.(tensor, r + i, j);
                         if (tensor.parameters?.[r + i])
                           onParameter?.(tensor.parameters[r + i]);
                       }}

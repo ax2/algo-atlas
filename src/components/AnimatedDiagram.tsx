@@ -267,10 +267,12 @@ function GraphScene({
   fitContent = false,
   onSelect,
   selection,
+  highlights,
 }: {
   fitContent?: boolean;
   onSelect?: (selection: DiagramSelection) => void;
   selection?: DiagramSelection;
+  highlights?: { nodes: string[]; edges: [string, string][] };
   frame: Frame;
   options: MotionOptions;
   onInspect?: (s: string) => void;
@@ -324,9 +326,14 @@ function GraphScene({
                   : undefined
               }
               selected={
-                selection?.kind === "edge" &&
-                [selection.from, selection.to].sort().join(":") ===
-                  [e.from, e.to].sort().join(":")
+                highlights?.edges.some(
+                  (pair) =>
+                    pair.slice().sort().join(":") ===
+                    [e.from, e.to].sort().join(":"),
+                ) ||
+                (selection?.kind === "edge" &&
+                  [selection.from, selection.to].sort().join(":") ===
+                    [e.from, e.to].sort().join(":"))
               }
               curved={
                 !!e.directed &&
@@ -351,7 +358,7 @@ function GraphScene({
           return (
             <motion.g
               key={n.id}
-              className={`node motion-node ${n.color || ""} ${selection?.kind === "node" && selection.id === n.id ? "data-selected" : ""}`}
+              className={`node motion-node ${n.color || ""} ${highlights?.nodes.includes(n.id) || (selection?.kind === "node" && selection.id === n.id) ? "data-selected" : ""}`}
               data-node={n.id}
               data-updating={n.updating || undefined}
               aria-description={
@@ -729,10 +736,12 @@ export function Diagram({
   fitContent = false,
   onSelect,
   selection,
+  highlights,
 }: {
   fitContent?: boolean;
   onSelect?: (selection: DiagramSelection) => void;
   selection?: DiagramSelection;
+  highlights?: { nodes: string[]; edges: [string, string][] };
   frame: Frame;
   kind: Trace["kind"];
   onInspect?: (s: string) => void;
@@ -767,6 +776,7 @@ export function Diagram({
         fitContent={fitContent}
         onSelect={onSelect}
         selection={selection}
+        highlights={highlights}
       />
     );
   if (kind === "bars")

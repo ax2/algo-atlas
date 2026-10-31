@@ -5411,3 +5411,75 @@ main {
   stroke: var(--orange) !important;
   stroke-width: 3.5;
 }
+
+/* Stage 010: reverse inspection reuses the bounded side panel. */
+#section-experiment
+  .ai-inspector[data-calculating="true"]
+  > :not(.ai-current-step):not(.experiment-note-tabs):not(.ai-calculation) {
+  display: none !important;
+}
+#section-experiment .ai-calculation {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+#section-experiment .calculation-back {
+  flex-shrink: 0;
+  align-self: flex-start;
+  font-size: 11px;
+  padding: 2px 0;
+}
+#section-experiment .ai-derivation {
+  padding: 0;
+  border: 0;
+  margin: 0;
+  background: none;
+}
+.note-cell-button {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  line-height: inherit;
+  background: none;
+  cursor: pointer;
+}
+.note-cell-button:hover {
+  text-decoration: underline;
+}
+#section-experiment .update-terms {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+#section-experiment .update-terms > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  text-align: center;
+  border-radius: 3px;
+}
+#section-experiment .update-terms small {
+  font-size: 9px;
+  line-height: 1.2;
+  color: var(--muted);
+}
+#section-experiment .update-terms strong {
+  font-size: clamp(11px, 1.2vw, 16px);
+}
+#section-experiment .update-terms [data-picked="true"] {
+  box-shadow: 0 0 0 1px var(--orange);
+}
+@media (max-width: 760px) {
+  #section-experiment.case-experiment .single-screen[data-inspecting="true"] {
+    grid-template-rows: minmax(0, 1fr) 200px;
+  }
+}

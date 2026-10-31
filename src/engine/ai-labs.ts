@@ -10,6 +10,7 @@ export type LabConfig = {
   gamma: number;
 };
 export type Tensor = {
+  ref?: { key: string; rows?: number[]; cols?: number[] };
   name: string;
   rows: (number | string)[][];
   columns?: string[];
@@ -407,6 +408,7 @@ export function runAILab(id: LabId, config: LabConfig): LabTrace {
       [
         {
           name: "按参数组的梯度 L₂ 范数",
+          ref: { key: "gradient-norm" },
           rows: [...new Set(updates.map((p) => p.group))].map((g) => [
             g,
             Math.sqrt(
@@ -436,6 +438,7 @@ export function runAILab(id: LabId, config: LabConfig): LabTrace {
       [
         {
           name: "更新前 → 更新后损失",
+          ref: { key: "loss-comparison" },
           rows: [[model.loss.value, after.loss.value]],
           columns: ["之前", "之后"],
         },
@@ -609,6 +612,7 @@ function reinforcement(c: LabConfig): LabTrace {
           tensors: [
             {
               name: "Q(s,a) · 12×4",
+              ref: { key: "q-table" },
               rows: q.map((r) => [...r]),
               beforeRows: update
                 ? q.map((r, s) =>

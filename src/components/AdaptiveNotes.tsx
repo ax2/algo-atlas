@@ -1,7 +1,10 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-type NoteCell = string | number | { value: string | number; changed: boolean };
+type NoteCell =
+  | string
+  | number
+  | { value: string | number; changed: boolean; action?: string };
 const cellValue = (cell: NoteCell) =>
   typeof cell === "object" ? cell.value : cell;
 export type NoteBlock = {
@@ -11,7 +14,13 @@ export type NoteBlock = {
   rows?: NoteCell[][];
 };
 
-function Block({ block }: { block: NoteBlock }) {
+function Block({
+  block,
+  onAction,
+}: {
+  block: NoteBlock;
+  onAction?: (action: string) => void;
+}) {
   return (
     <article className="note-block">
       <h5>{block.title}</h5>
@@ -35,7 +44,16 @@ function Block({ block }: { block: NoteBlock }) {
                       (typeof cell === "object" && cell.changed) || undefined
                     }
                   >
-                    {cellValue(cell)}
+                    {typeof cell === "object" && cell.action ? (
+                      <button
+                        className="note-cell-button"
+                        onClick={() => onAction?.(cell.action!)}
+                      >
+                        {cell.value}
+                      </button>
+                    ) : (
+                      cellValue(cell)
+                    )}
                   </td>
                 ))}
               </tr>
@@ -74,7 +92,12 @@ function measurementBlock(block: NoteBlock) {
       const tr = body.insertRow();
       row.forEach((c) => {
         const cell = tr.insertCell();
-        cell.textContent = String(cellValue(c));
+        if (typeof c === "object" && c.action) {
+          const button = document.createElement("button");
+          button.className = "note-cell-button";
+          button.textContent = String(c.value);
+          cell.append(button);
+        } else cell.textContent = String(cellValue(c));
         if (typeof c === "object" && c.changed) cell.dataset.changed = "true";
       });
     });
@@ -162,10 +185,12 @@ export function AdaptiveNotes({
   blocks,
   className,
   label,
+  onAction,
 }: {
   blocks: NoteBlock[];
   className: string;
   label: string;
+  onAction?: (action: string) => void;
 }) {
   const deck = useRef<HTMLElement>(null),
     measure = useRef<HTMLDivElement>(null),
@@ -213,7 +238,7 @@ export function AdaptiveNotes({
     <section ref={deck} className={`note-deck ${className}`} aria-label={label}>
       <div className="note-page" aria-live="polite">
         {pages[current].map((block, i) => (
-          <Block block={block} key={i} />
+          <Block block={block} key={i} onAction={onAction} />
         ))}
       </div>
       {pages.length > 1 && (

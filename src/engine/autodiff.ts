@@ -38,7 +38,9 @@ export class Scalar {
       [this, this.value > 0 ? 1 : 0],
     ]);
   }
-  backward() {
+  backward(
+    observe?: (parent: Scalar, upstream: number, local: number) => void,
+  ) {
     const seen = new Set<Scalar>(),
       order: Scalar[] = [];
     const visit = (v: Scalar) => {
@@ -51,7 +53,10 @@ export class Scalar {
     order.forEach((v) => (v.grad = 0));
     this.grad = 1;
     for (const v of order.reverse())
-      for (const [p, local] of v.parents) p.grad += local * v.grad;
+      for (const [p, local] of v.parents) {
+        p.grad += local * v.grad;
+        observe?.(p, v.grad, local);
+      }
   }
 }
 export const scalar = (v: Scalar | number) =>

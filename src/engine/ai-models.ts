@@ -119,13 +119,14 @@ export function transformerModel(
   const concat = tokens.map((_, i) => [...heads[0][i], ...heads[1][i]]),
     projected = linear(concat, Wo),
     residual = x.map((r, i) => r.map((v, j) => v.add(projected[i][j]))),
-    feed = linear(
-      linear(norm(residual), W1, b1).map((r) => r.map((v) => v.relu())),
-      W2,
-      b2,
+    normalizedResidual = norm(residual),
+    feedHidden = linear(normalizedResidual, W1, b1).map((r) =>
+      r.map((v) => v.relu()),
     ),
+    feed = linear(feedHidden, W2, b2),
     output = residual.map((r, i) => r.map((v, j) => v.add(feed[i][j]))),
-    logits = linear(norm(output), U, bias),
+    normalizedOutput = norm(output),
+    logits = linear(normalizedOutput, U, bias),
     probs = logits.map(softmax);
   // Stable log-sum-exp CE avoids taking log of an underflowed probability.
   const losses = logits.map((r, i) => {
@@ -142,6 +143,11 @@ export function transformerModel(
     targets,
     position,
     x: values(x),
+    normalizedInput: values(n),
+    normalizedResidual: values(normalizedResidual),
+    feedHidden: values(feedHidden),
+    normalizedOutput: values(normalizedOutput),
+    logits: values(logits),
     q: values(q),
     k: values(k),
     v: values(v),

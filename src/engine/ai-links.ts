@@ -19,6 +19,7 @@ export type LinkedData = {
 };
 const column = (t: Tensor, c: number, name: string): Tensor => ({
   ...t,
+  ref: t.ref ? { ...t.ref, cols: [t.ref.cols?.[c] ?? c] } : undefined,
   name,
   rows: t.rows.map((r) => [r[c]]),
   columns: [t.columns?.[c] ?? name],
@@ -101,6 +102,7 @@ export function linkedData(
       tensors: [
         {
           ...table,
+          ref: { key: "q-table", rows: [state] },
           name: `s${state} · Q 值`,
           rows: [row],
           labels: [`s${state}`],
