@@ -414,3 +414,74 @@ export function historicalSum(
     versions[version].slice(l, r + 1).reduce((s, x) => s + x, 0),
   );
 }
+// @batch-gradient
+export function batchGradient(x: number[], y: number[], w: number) {
+  return Number(
+    (x.reduce((s, v, i) => s + (w * v - y[i]) * v, 0) / x.length).toFixed(6),
+  );
+}
+// @sgd-vector
+export function sgdVector(
+  weights: number[],
+  gradients: number[],
+  rate: number,
+) {
+  return weights.map((w, i) => Number((w - rate * gradients[i]).toFixed(6)));
+}
+// @chain-gradient
+export function chainGradient(
+  x: number,
+  w: number,
+  b: number,
+  upstream: number,
+) {
+  return Number((upstream * (1 - Math.tanh(w * x + b) ** 2) * x).toFixed(6));
+}
+// @causal-softmax
+export function causalSoftmax(scores: number[][]) {
+  return scores.map((row, i) => {
+    const m = Math.max(...row.slice(0, i + 1)),
+      exps = row.map((v, j) => (j <= i ? Math.exp(v - m) : 0)),
+      total = exps.reduce((s, v) => s + v, 0);
+    return exps.map((v) => Number((v / total).toFixed(6)));
+  });
+}
+// @attention-mix
+export function attentionMix(weights: number[][], values: number[][]) {
+  return weights.map((row) =>
+    values[0].map((_, k) =>
+      Number(row.reduce((s, w, j) => s + w * values[j][k], 0).toFixed(6)),
+    ),
+  );
+}
+// @residual-add
+export function residualAdd(x: number[][], branch: number[][]) {
+  return x.map((row, i) =>
+    row.map((v, j) => Number((v + branch[i][j]).toFixed(6))),
+  );
+}
+// @q-update
+export function qUpdate(
+  old: number,
+  reward: number,
+  nextMax: number,
+  gamma: number,
+  alpha: number,
+  done: boolean,
+) {
+  const target = reward + (done ? 0 : gamma * nextMax);
+  return Number((old + alpha * (target - old)).toFixed(6));
+}
+// @discounted-return
+export function discountedReturn(rewards: number[], gamma: number) {
+  let g = 0;
+  for (let i = rewards.length - 1; i >= 0; i--) g = rewards[i] + gamma * g;
+  return Number(g.toFixed(6));
+}
+// @epsilon-policy
+export function epsilonPolicy(q: number[], epsilon: number) {
+  const greedy = q.indexOf(Math.max(...q));
+  return q.map((_, i) =>
+    Number((epsilon / q.length + (i === greedy ? 1 - epsilon : 0)).toFixed(6)),
+  );
+}

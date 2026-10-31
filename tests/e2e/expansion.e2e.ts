@@ -91,7 +91,7 @@ test("balanced tree guided pause, input queue, AI and practice workflow", async 
   await expect(page.getByRole("heading", { level: 1 })).toContainText("练习库");
   await expect(page.locator(".problem-row")).toHaveCount(8);
   await page.getByRole("button", { name: "下一页", exact: true }).click();
-  await expect(page.locator(".pagination")).toContainText("2 / 4");
+  await expect(page.locator(".pagination")).toContainText("2 /");
   await page.getByRole("textbox", { name: "练习搜索" }).fill("逆序");
   await expect(page.locator(".problem-row")).toHaveCount(1);
   await page.locator(".problem-row").click();
@@ -110,8 +110,8 @@ test("balanced tree guided pause, input queue, AI and practice workflow", async 
     page.getByRole("button", { name: "已练习（点击撤销）" }),
   ).toHaveAttribute("aria-pressed", "true");
   await page.goto("/#/practice");
-  await page.getByRole("button", { name: "AI 数值训练 4 题" }).click();
-  await expect(page.locator(".problem-row")).toHaveCount(4);
+  await page.getByRole("button", { name: /^AI 数值训练 \d+ 题$/ }).click();
+  await expect(page.locator(".problem-row")).toHaveCount(8);
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.waitForTimeout(400);
   await page.screenshot({

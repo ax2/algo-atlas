@@ -8,12 +8,16 @@ import {
   Search,
   GitCompareArrows,
   Lightbulb,
+  BrainCircuit,
 } from "lucide-react";
 import { cases } from "../content/cases";
 import { topicById } from "../content/catalog";
 import { runTrace } from "../engine";
 import { graphScenario } from "../engine/graphs";
 import { navigate } from "../services/routing";
+import { AILab } from "./AILab";
+import { aiLabs } from "../content/ai-labs";
+import type { LabId } from "../engine/ai-labs";
 const icons = [Route, Database, Workflow, Briefcase, Search, GitCompareArrows];
 function evaluate(
   id: string,
@@ -218,6 +222,7 @@ export function Cases({ id }: { id: string }) {
     [input, setInput] = useState(pair),
     [error, setError] = useState(""),
     [revealed, setRevealed] = useState(false);
+  if (Object.hasOwn(aiLabs, id)) return <AILab key={id} id={id as LabId} />;
   if (!selected)
     return (
       <>
@@ -231,7 +236,7 @@ export function Cases({ id }: { id: string }) {
         </header>
         <div className="case-grid">
           {cases.map((c, i) => {
-            const Icon = icons[i];
+            const Icon = icons[i] || BrainCircuit;
             return (
               <button
                 key={c.id}

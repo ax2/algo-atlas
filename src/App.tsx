@@ -39,6 +39,7 @@ import { Learning } from "./components/Learning";
 import { Cases } from "./components/Cases";
 import { PracticeLibrary } from "./components/PracticeLibrary";
 import { problems } from "./content/problems";
+import { cases } from "./content/cases";
 const categoryIcons = [
   Layers3,
   ChartNoAxesCombined,
@@ -250,7 +251,7 @@ export default function App() {
             onClick={() => navigate("cases")}
           >
             <Shapes size={20} />
-            综合专题<span>6</span>
+            综合专题<span>{cases.length}</span>
           </button>
           <button
             className={

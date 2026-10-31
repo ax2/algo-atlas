@@ -4,6 +4,16 @@ import { useMotionPreference } from "../services/motion-preference";
 import type { Frame, Trace, Edge, Node } from "../engine/model";
 const travel = [0.65, 0, 0.25, 1] as const;
 const land = [0.16, 1, 0.3, 1] as const;
+const nodeWidth = (n: Node) =>
+  n.kind
+    ? 18
+    : Math.max(
+        46,
+        [...n.label].reduce(
+          (width, c) => width + (/[^\x00-\xff]/.test(c) ? 14 : 8.2),
+          20,
+        ),
+      );
 type MotionOptions = {
   duration: number;
   still: boolean;
@@ -26,8 +36,18 @@ function EnergyEdge({
     dx = b.x - a.x,
     dy = b.y - a.y,
     len = Math.hypot(dx, dy) || 1;
-  const startRadius = a.kind ? 9 : Math.min(len / 3, 25),
-    endRadius = b.kind ? 9 : Math.min(len / 3, 29);
+  const radius = (n: Node) =>
+    n.kind
+      ? 11
+      : Math.min(
+          len / 3,
+          Math.min(
+            nodeWidth(n) / 2 / (Math.abs(dx) / len),
+            23 / (Math.abs(dy) / len),
+          ) + 4,
+        );
+  const startRadius = radius(a),
+    endRadius = radius(b);
   const x1 = a.x + (dx / len) * startRadius,
     y1 = a.y + (dy / len) * startRadius,
     x2 = b.x - (dx / len) * endRadius,
@@ -47,7 +67,7 @@ function EnergyEdge({
         d={d}
         fill="none"
         filter={`url(#${glow})`}
-        initial={still ? false : { pathLength: 0, opacity: 0 }}
+        initial={still ? false : { d, pathLength: 0, opacity: 0 }}
         animate={{
           d,
           pathLength: 1,
@@ -63,7 +83,7 @@ function EnergyEdge({
         d={d}
         fill="none"
         strokeLinecap="round"
-        initial={still ? false : { pathLength: 0, opacity: 0.2 }}
+        initial={still ? false : { d, pathLength: 0, opacity: 0.2 }}
         animate={{
           d,
           pathLength: 1,
@@ -186,7 +206,7 @@ function GraphScene({
       <AnimatePresence initial={!still}>
         {nodes.map((n) => {
           const active = !!n.color,
-            w = n.kind ? 18 : Math.max(46, n.label.length * 8.6),
+            w = nodeWidth(n),
             color =
               n.color === "orange"
                 ? "var(--orange)"

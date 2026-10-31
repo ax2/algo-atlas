@@ -1,5 +1,14 @@
 # 资料与内容口径
 
+## 2026-10-31 · AI 综合专题
+
+- [PyTorch 训练优化](https://docs.pytorch.org/tutorials/beginner/basics/optimization_tutorial.html)：前向、损失、清零梯度、反向与优化更新。
+- [Harvard Annotated Transformer](https://nlp.seas.harvard.edu/annotated-transformer/) 与 [原始论文](https://arxiv.org/abs/1706.03762)：多头注意力、掩码、残差、位置编码与训练。本站另明确采用单层 decoder-only Pre-LN 教学变体，非完整论文复现。
+- [OpenAI Spinning Up 基本概念](https://spinningup.openai.com/en/latest/spinningup/rl_intro.html) 与 [Q-learning/Bellman 方程章节](https://spinningup.openai.com/en/latest/algorithms/ddpg.html#the-q-learning-side-of-ddpg)：状态动作、回报、自举和终止项；本站实际实现的是离散表格 Q-learning，不是 DDPG。
+- 1986 年反向传播历史链接保留 Nature DOI 入口；该网站本次要求跳转身份域，未声称获取全文。Sutton/Barto 官方 PDF 本次抓取失败，强化学习公式以已取得的一手文档交叉核验。
+
+以下为早期单元资料记录。
+
 2026-10-30 核查以下教材/维护者入口。课程中文说明、类比与实验代码独立编写；未复制教材正文或第三方算法实现。
 
 - [Princeton Algorithms, 4th Edition](https://algs4.cs.princeton.edu/home/)：课程范围、排序/查找/图/字符串的组织入口。

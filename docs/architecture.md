@@ -33,3 +33,11 @@ Topic 只描述课程与输入协议；runTrace 依据分类派发到基础、�
 Frame 增加 explanation、checkpoint、inputState，Trace 增加 source。讲解器只使用已计算轨迹和对应机制规则，不臆测下一次数据；播放器使用 setTimeout，在关键帧到达时暂停。完整树的指针变更先接回根，再生成帧；旧快照仍不可变。
 
 题库使用稳定 Problem.id 与 topic 标签，独立列表/详情路由、分页、筛选和分层揭示题解。参考函数单独维护，源码摘取与测试运行指向同一文件；换行标准化使 Windows checkout 的 CRLF 不影响代码展示。LearningData v1 可选 exerciseCompleted 字段向后兼容，导入校验并合并已知题目 ID。
+
+## Stage 004 · AI 训练轨迹
+
+`autodiff.ts` 提供小型标量反向自动微分，拓扑逆序累加共享路径梯度；每轮重建计算图、同步 SGD 更新。`ai-models.ts` 实现 MLP 和 Pre-LN 双头因果 Transformer，不依赖 ML 服务或外部模型。`ai-labs.ts` 在计算后只保存数值、参数账本、说明与图状态，不保留历史计算图。RL 独立使用确定性 PRNG 和表格 Bellman 更新，终止/截断分开处理。
+
+`AILab` 按配置 useMemo 重算，播放只改变快照索引。配置变更回到首帧，关键阶段暂停；URL 参数带边界校验，可还原配置与步骤。张量观察与参数组筛选不改变算法。复用 Diagram 的光影和系统减少动态效果。Problem.caseId 让练习详情可返回对应综合实验；学习存储版本不变。
+
+新增实验中的表格更新和神经元数值来自真实结果。Transformer 反传图从损失开始，不将离散 Token 或优化器画成梯度来源。回放快照开销单独于算法复杂度说明。

@@ -1,3 +1,4 @@
+import { aiLabs } from "./ai-labs";
 export const cases = [
   {
     id: "routes",
@@ -114,4 +115,17 @@ export const cases = [
     answer:
       "不能。这个式子对应仅插入和删除；若一次替换成本为 1，两个字符不同可用一次替换，而删加需要两次。",
   },
+  ...Object.entries(aiLabs).map(([id, lab]) => ({
+    id,
+    title: lab.title,
+    en: lab.en,
+    description: lab.description,
+    icon: "brain",
+    level: "进阶",
+    lessons: lab.lessons,
+    steps: ["追踪数据流", "计算更新方向", "验证学习结果"],
+    constraint: lab.boundary,
+    challenge: "改变参数后，更新轨迹有什么区别？",
+    answer: lab.complexity,
+  })),
 ];

@@ -135,6 +135,14 @@ export function PracticeLibrary({
             <p>3. 编码并覆盖边界</p>
             <p>4. 与参考解法对照</p>
             <h3>关联课程</h3>
+            {problem.caseId && (
+              <button
+                className="related-lesson"
+                onClick={() => navigate("cases", problem.caseId)}
+              >
+                返回 AI 综合实验 <ArrowRight size={14} />
+              </button>
+            )}
             {problem.topics.map((t) => (
               <button
                 key={t}

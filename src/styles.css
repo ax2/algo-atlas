@@ -3414,3 +3414,595 @@ main {
     font-size: 10px;
   }
 }
+/* Stage 004: AI labs — computation, explanation and numeric inspection. */
+.ai-lab {
+  min-width: 0;
+}
+.ai-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 36px 0 28px;
+}
+.ai-hero h1 {
+  font-size: clamp(25px, 2.7vw, 38px);
+  letter-spacing: -1px;
+  margin: 12px 0;
+}
+.ai-hero p:not(.eyebrow) {
+  color: var(--muted);
+  line-height: 1.8;
+  max-width: 760px;
+}
+.ai-hero > svg {
+  color: var(--mint);
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 22px #5de0bd30);
+}
+.ai-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}
+.ai-badges span {
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: var(--mint);
+  background: var(--surface);
+}
+.ai-controls {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.ai-controls label {
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  flex: 1;
+  min-width: 100px;
+}
+.ai-controls label:first-child {
+  flex: 2;
+  min-width: 220px;
+}
+.ai-lab select {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 9px;
+  color: var(--text);
+  background: var(--surface-raised);
+  max-width: 100%;
+  min-width: 0;
+}
+.ai-controls p {
+  width: 100%;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+.ai-source {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  padding: 18px 0;
+  font-size: 11px;
+}
+.ai-source strong {
+  color: var(--mint);
+}
+.ai-source span {
+  padding: 6px 9px;
+  border-radius: 5px;
+  background: var(--surface-raised);
+  color: var(--muted);
+}
+.ai-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(285px, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+.ai-stage,
+.ai-explanation,
+.ai-tensor,
+.ai-parameters {
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 12px;
+}
+.ai-stage {
+  background:
+    radial-gradient(ellipse at 50% 0, #5de0bd08, transparent 60%),
+    var(--surface);
+}
+.ai-stage-top,
+.ai-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.ai-stage-top .text-button {
+  font-size: 11px;
+}
+.ai-phases {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  padding: 18px 0 12px;
+  scrollbar-width: thin;
+}
+.ai-phases button {
+  white-space: nowrap;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+  padding: 9px 10px;
+  border-radius: 6px;
+}
+.ai-phases button[aria-current="step"] {
+  color: var(--mint);
+  border-color: var(--mint);
+  box-shadow: 0 0 20px #5de0bd12;
+}
+.ai-flow-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.ai-flow-label button {
+  font-size: 10px;
+  white-space: nowrap;
+}
+.ai-flow-scroll {
+  overflow: auto;
+  scrollbar-width: thin;
+}
+.ai-flow {
+  min-width: 560px;
+}
+.ai-flow.fit {
+  min-width: 0;
+}
+.ai-flow .graph-svg {
+  width: 100%;
+  max-height: none;
+  min-height: 0;
+  height: auto;
+  display: block;
+}
+.ai-transport {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  padding: 14px 0 10px;
+  border-top: 1px solid var(--border);
+}
+.ai-transport .button {
+  min-width: 90px;
+  justify-content: center;
+}
+.ai-transport select {
+  font-size: 11px;
+  padding: 8px 5px;
+}
+.ai-timeline {
+  width: 100%;
+  accent-color: var(--mint);
+  cursor: pointer;
+}
+.ai-play-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  margin: 12px 0;
+}
+.ai-play-options label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ai-play-options select {
+  padding: 4px 8px;
+}
+.ai-guided {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--mint);
+}
+.ai-guided input {
+  accent-color: var(--mint);
+}
+.ai-curve {
+  margin-top: 20px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+.ai-curve > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.ai-curve strong {
+  font-family: monospace;
+  color: var(--mint);
+}
+.ai-curve svg {
+  width: 100%;
+  display: block;
+  margin-top: 6px;
+}
+.ai-explanation h2 {
+  font-size: 20px;
+  line-height: 1.6;
+  margin: 12px 0 18px;
+}
+.ai-explanation code {
+  display: block;
+  overflow-wrap: anywhere;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.9;
+  color: var(--mint);
+}
+.ai-explanation section {
+  border-left: 2px solid var(--border);
+  padding-left: 14px;
+  margin-top: 20px;
+}
+.ai-explanation section:first-of-type {
+  border-color: var(--mint);
+}
+.ai-explanation h3 {
+  font-size: 12px;
+  color: var(--mint);
+  margin: 0 0 8px;
+}
+.ai-explanation p {
+  font-size: 13px;
+  line-height: 1.9;
+  color: var(--muted);
+  margin: 0;
+}
+.ai-data-panels {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+  margin-top: 18px;
+  align-items: start;
+}
+.ai-section-head h3 {
+  font-size: 15px;
+  white-space: nowrap;
+  margin: 0;
+}
+.ai-section-head select {
+  font-size: 11px;
+  max-width: 65%;
+}
+.ai-data-panels .muted {
+  font-size: 11px;
+  line-height: 1.8;
+  min-height: 38px;
+}
+.ai-matrix-scroll {
+  max-height: 360px;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+.ai-matrix-scroll .matrix {
+  min-width: max-content;
+}
+.ai-param-scroll {
+  overflow: auto;
+  max-height: 360px;
+  scrollbar-width: thin;
+}
+.ai-parameters table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 11px;
+  font-family: monospace;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ai-parameters th,
+.ai-parameters td {
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+  padding: 10px 8px;
+}
+.ai-parameters th:first-child {
+  text-align: left;
+  font-weight: 400;
+}
+.ai-parameters thead {
+  position: sticky;
+  top: 0;
+  background: var(--surface-raised);
+  z-index: 1;
+  color: var(--muted);
+}
+.ai-parameters td:last-child {
+  color: var(--mint);
+}
+.ai-parameters td span {
+  display: inline-block;
+}
+.ai-positive {
+  color: var(--orange);
+}
+.ai-negative {
+  color: var(--blue);
+}
+.ai-result {
+  padding: 24px;
+  border: 1px solid var(--mint);
+  border-radius: 12px;
+  margin-top: 20px;
+  background: #5de0bd08;
+  line-height: 1.8;
+}
+.ai-result strong {
+  color: var(--mint);
+}
+.ai-result p {
+  font-size: 14px;
+  margin-bottom: 0;
+  overflow-wrap: anywhere;
+}
+.ai-reading {
+  margin-top: 46px;
+}
+.ai-reading h2,
+.ai-exercises h2 {
+  font-size: 24px;
+  margin: 12px 0 24px;
+}
+.ai-concepts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.ai-concepts article {
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.ai-concepts h3 {
+  font-size: 16px;
+  margin: 0 0 12px;
+}
+.ai-concepts p,
+.ai-reading details p {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.95;
+  margin: 0;
+}
+.ai-reading details {
+  margin-top: 20px;
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.ai-reading summary {
+  cursor: pointer;
+  color: var(--mint);
+  font-size: 14px;
+}
+.ai-reading details h3 {
+  font-size: 14px;
+  margin-top: 24px;
+}
+.ai-exercises {
+  margin-top: 40px;
+}
+.ai-exercises > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.ai-exercises button {
+  text-align: left;
+  padding: 24px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.2s;
+}
+.ai-exercises button:hover {
+  border-color: var(--mint);
+}
+.ai-exercises button > span {
+  font: 24px monospace;
+  color: var(--mint);
+}
+.ai-exercises h3 {
+  font-size: 16px;
+  margin: 16px 0 8px;
+}
+.ai-exercises p {
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--muted);
+  flex: 1;
+}
+.ai-exercises footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--mint);
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  margin-top: 14px;
+}
+.ai-sources {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  line-height: 1.8;
+  margin-top: 24px;
+  color: var(--muted);
+}
+.ai-sources a {
+  color: var(--mint);
+}
+.ai-share {
+  display: grid;
+  gap: 8px;
+  font-size: 11px;
+  margin: 14px 0;
+  color: var(--muted);
+}
+.ai-share input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+}
+.art-6 {
+  background:
+    radial-gradient(circle at 65% 40%, #5de0bd24, transparent 50%), #101f28;
+}
+.art-7 {
+  background:
+    radial-gradient(circle at 65% 40%, #8e95ff32, transparent 50%), #171a30;
+}
+.art-8 {
+  background:
+    radial-gradient(circle at 65% 40%, #ffac6232, transparent 50%), #281f19;
+}
+@media (max-width: 1100px) {
+  .ai-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ai-explanation {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 22px;
+  }
+  .ai-explanation > code,
+  .ai-explanation > h2,
+  .ai-explanation > .eyebrow {
+    grid-column: 1/-1;
+  }
+}
+@media (max-width: 650px) {
+  .ai-hero {
+    padding-top: 24px;
+  }
+  .ai-hero > svg {
+    display: none;
+  }
+  .ai-hero h1 {
+    font-size: 26px;
+  }
+  .ai-hero p:not(.eyebrow) {
+    font-size: 13px;
+  }
+  .ai-stage,
+  .ai-explanation,
+  .ai-tensor,
+  .ai-parameters {
+    padding: 16px;
+  }
+  .ai-controls {
+    padding: 16px;
+    gap: 12px;
+  }
+  .ai-controls label:first-child {
+    flex-basis: 100%;
+    min-width: 0;
+  }
+  .ai-workspace,
+  .ai-data-panels,
+  .ai-concepts,
+  .ai-exercises > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ai-explanation {
+    display: block;
+  }
+  .ai-explanation h2 {
+    font-size: 18px;
+  }
+  .ai-transport {
+    gap: 5px;
+  }
+  .ai-transport .icon-button {
+    width: 30px;
+    min-width: 30px;
+  }
+  .ai-transport .button {
+    min-width: 70px;
+    padding: 9px;
+  }
+  .ai-transport select {
+    max-width: 66px;
+  }
+  .ai-guided {
+    font-size: 11px;
+  }
+  .ai-badges {
+    gap: 6px;
+  }
+  .ai-badges span {
+    font-size: 10px;
+    padding: 5px 7px;
+  }
+  .ai-reading h2,
+  .ai-exercises h2 {
+    font-size: 21px;
+  }
+  .ai-stage-top {
+    gap: 5px;
+  }
+  .ai-stage-top .eyebrow {
+    font-size: 10px;
+  }
+  .ai-section-head {
+    flex-wrap: wrap;
+  }
+  .ai-section-head select {
+    max-width: 100%;
+  }
+}
