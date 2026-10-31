@@ -1,11 +1,14 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+type NoteCell = string | number | { value: string | number; changed: boolean };
+const cellValue = (cell: NoteCell) =>
+  typeof cell === "object" ? cell.value : cell;
 export type NoteBlock = {
   title: string;
   text?: string;
   columns?: string[];
-  rows?: (string | number)[][];
+  rows?: NoteCell[][];
 };
 
 function Block({ block }: { block: NoteBlock }) {
@@ -26,7 +29,14 @@ function Block({ block }: { block: NoteBlock }) {
             {block.rows.map((row, i) => (
               <tr key={i}>
                 {row.map((cell, j) => (
-                  <td key={j}>{cell}</td>
+                  <td
+                    key={j}
+                    data-changed={
+                      (typeof cell === "object" && cell.changed) || undefined
+                    }
+                  >
+                    {cellValue(cell)}
+                  </td>
                 ))}
               </tr>
             ))}
@@ -63,7 +73,9 @@ function measurementBlock(block: NoteBlock) {
     block.rows.forEach((row) => {
       const tr = body.insertRow();
       row.forEach((c) => {
-        tr.insertCell().textContent = String(c);
+        const cell = tr.insertCell();
+        cell.textContent = String(cellValue(c));
+        if (typeof c === "object" && c.changed) cell.dataset.changed = "true";
       });
     });
     article.append(table);
@@ -112,7 +124,7 @@ function paginate(
         const textBlock = {
           title: block.title,
           text: row
-            .map((c, j) => `${block!.columns?.[j] || j}：${c}`)
+            .map((c, j) => `${block!.columns?.[j] || j}：${cellValue(c)}`)
             .join("；"),
         };
         const rest = block.rows.slice(1);

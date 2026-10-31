@@ -1,3 +1,5 @@
+export type DiagramSelection =
+  { kind: "node"; id: string } | { kind: "edge"; from: string; to: string };
 export type Node = {
   id: string;
   label: string;
@@ -5,6 +7,7 @@ export type Node = {
   y: number;
   color?: string;
   subtitle?: string;
+  updating?: boolean;
   kind?: "point" | "centroid";
 };
 export type Edge = {

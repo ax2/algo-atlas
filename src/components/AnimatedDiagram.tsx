@@ -1,7 +1,13 @@
 import { useId } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useMotionPreference } from "../services/motion-preference";
-import type { Frame, Trace, Edge, Node } from "../engine/model";
+import type {
+  Frame,
+  Trace,
+  Edge,
+  Node,
+  DiagramSelection,
+} from "../engine/model";
 const travel = [0.65, 0, 0.25, 1] as const;
 const land = [0.16, 1, 0.3, 1] as const;
 const nodeWidth = (n: Node) =>
@@ -27,12 +33,16 @@ function EnergyEdge({
   b,
   options,
   curved = false,
+  onSelect,
+  selected = false,
 }: {
   edge: Edge;
   a: Node;
   b: Node;
   options: MotionOptions;
   curved?: boolean;
+  onSelect?: () => void;
+  selected?: boolean;
 }) {
   const { duration, still, tick, glow } = options,
     dx = b.x - a.x,
@@ -74,12 +84,36 @@ function EnergyEdge({
     transition = { duration, ease: travel };
   return (
     <motion.g
-      className={`energy-edge ${edge.active ? "energized" : ""}`}
+      className={`energy-edge ${edge.active ? "energized" : ""} ${selected ? "data-selected" : ""}`}
+      role={onSelect ? "button" : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+      aria-label={onSelect ? `连线 ${a.label} → ${b.label}` : undefined}
+      aria-pressed={onSelect ? selected : undefined}
+      onClick={onSelect}
+      onKeyDown={(e) => {
+        if (onSelect && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
       data-edge={`${edge.from}-${edge.to}`}
       initial={still ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, transition: { duration: duration * 0.75 } }}
     >
+      {onSelect && (
+        <title>{`连线 ${a.label} → ${b.label} · 查看关联数据`}</title>
+      )}
+      {onSelect && (
+        <path
+          className="edge-hit"
+          d={d}
+          fill="none"
+          stroke="transparent"
+          strokeWidth="18"
+          pointerEvents="stroke"
+        />
+      )}
       <motion.path
         className="edge-aura"
         d={d}
@@ -231,8 +265,12 @@ function GraphScene({
   options,
   onInspect,
   fitContent = false,
+  onSelect,
+  selection,
 }: {
   fitContent?: boolean;
+  onSelect?: (selection: DiagramSelection) => void;
+  selection?: DiagramSelection;
   frame: Frame;
   options: MotionOptions;
   onInspect?: (s: string) => void;
@@ -280,6 +318,16 @@ function GraphScene({
               a={a}
               b={b}
               options={options}
+              onSelect={
+                onSelect
+                  ? () => onSelect({ kind: "edge", from: e.from, to: e.to })
+                  : undefined
+              }
+              selected={
+                selection?.kind === "edge" &&
+                [selection.from, selection.to].sort().join(":") ===
+                  [e.from, e.to].sort().join(":")
+              }
               curved={
                 !!e.directed &&
                 !!frame.edges?.some(
@@ -303,8 +351,12 @@ function GraphScene({
           return (
             <motion.g
               key={n.id}
-              className={`node motion-node ${n.color || ""}`}
+              className={`node motion-node ${n.color || ""} ${selection?.kind === "node" && selection.id === n.id ? "data-selected" : ""}`}
               data-node={n.id}
+              data-updating={n.updating || undefined}
+              aria-description={
+                n.updating ? "正在更新此状态的 Q 表项" : undefined
+              }
               initial={
                 still ? false : { x: n.x, y: n.y + 20, opacity: 0, scale: 0.65 }
               }
@@ -323,10 +375,14 @@ function GraphScene({
               role="button"
               tabIndex={0}
               aria-label={`节点 ${n.label}`}
-              onClick={() => onInspect?.(`节点 ${n.label} ${n.subtitle || ""}`)}
+              onClick={() => {
+                onSelect?.({ kind: "node", id: n.id });
+                onInspect?.(`节点 ${n.label} ${n.subtitle || ""}`);
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
+                  onSelect?.({ kind: "node", id: n.id });
                   onInspect?.(`节点 ${n.label}`);
                 }
               }}
@@ -671,8 +727,12 @@ export function Diagram({
   milliseconds = 850,
   effects = true,
   fitContent = false,
+  onSelect,
+  selection,
 }: {
   fitContent?: boolean;
+  onSelect?: (selection: DiagramSelection) => void;
+  selection?: DiagramSelection;
   frame: Frame;
   kind: Trace["kind"];
   onInspect?: (s: string) => void;
@@ -705,6 +765,8 @@ export function Diagram({
         options={options}
         onInspect={onInspect}
         fitContent={fitContent}
+        onSelect={onSelect}
+        selection={selection}
       />
     );
   if (kind === "bars")

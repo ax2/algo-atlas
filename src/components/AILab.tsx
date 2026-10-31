@@ -1,3 +1,5 @@
+import { linkedData, selectionKey } from "../engine/ai-links";
+import type { DiagramSelection } from "../engine/model";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { motion } from "motion/react";
 import {
@@ -122,7 +124,9 @@ export function AILab({ id }: { id: LabId }) {
     [effects, setEffects] = useState(true),
     [group, setGroup] = useState("all"),
     [share, setShare] = useState(""),
-    [inspect, setInspect] = useState(""),
+    [selection, setSelection] = useState<DiagramSelection>(),
+    [selectionVisit, setSelectionVisit] = useState(0),
+    [linkedTensorName, setLinkedTensorName] = useState<string>(),
     [panel, setPanel] = useState("讲解"),
     [parameter, setParameter] = useState(""),
     [fullscreen, setFullscreen] = useState(false),
@@ -168,11 +172,11 @@ export function AILab({ id }: { id: LabId }) {
   const jump = (n: number) => {
     setStep(n);
     setPlaying(false);
-    setInspect("");
     setShare("");
     if (panel === "分享") setPanel("讲解");
   };
   const change = (key: keyof LabConfig, value: number) => {
+    setSelection(undefined);
     setConfig({ ...config, [key]: value });
     jump(0);
   };
@@ -188,9 +192,25 @@ export function AILab({ id }: { id: LabId }) {
       : [0.02, 0.08, 0.3];
   const updated = frame.phase === "update",
     backward = frame.phase === "backward" || frame.phase === "target";
+  const linked = useMemo(
+    () => (selection ? linkedData(id, frame, selection) : undefined),
+    [id, frame, selection],
+  );
+  const linkedGroups = (
+    linked?.tensors.find((t) => t.name === linkedTensorName) ||
+    linked?.tensors[0]
+  )?.parameterGroups;
+  const focusedUpdates =
+    panel === "联动" && linked
+      ? frame.updates.filter(
+          (p) =>
+            linked.parameters.includes(p.name) &&
+            (!linkedGroups || linkedGroups.includes(p.group)),
+        )
+      : frame.updates;
   const focus =
-    frame.updates.find((p) => p.name === parameter) ||
-    [...frame.updates].sort(
+    focusedUpdates.find((p) => p.name === parameter) ||
+    [...focusedUpdates].sort(
       (a, b) => Math.abs(b.gradient) - Math.abs(a.gradient),
     )[0];
   return (
@@ -225,6 +245,7 @@ export function AILab({ id }: { id: LabId }) {
         <div
           className="ai-workspace single-screen"
           data-panel={panel}
+          data-still={!!still}
           ref={stage}
         >
           <section className="ai-stage" aria-label="AI 图解实验">
@@ -315,9 +336,14 @@ export function AILab({ id }: { id: LabId }) {
                     tick={position}
                     effects={effects}
                     milliseconds={speed}
-                    onInspect={(value) => {
-                      setInspect(value);
-                      setPanel("讲解");
+                    selection={panel === "联动" ? selection : undefined}
+                    onSelect={(value) => {
+                      setSelection(value);
+                      setLinkedTensorName(undefined);
+                      setSelectionVisit((v) => v + 1);
+                      setParameter("");
+                      setPanel("联动");
+                      setPlaying(false);
                     }}
                   />
                 )}
@@ -338,7 +364,7 @@ export function AILab({ id }: { id: LabId }) {
                       value={focus.name}
                       onChange={(e) => setParameter(e.target.value)}
                     >
-                      {frame.updates.map((p) => (
+                      {focusedUpdates.map((p) => (
                         <option key={p.name}>{p.name}</option>
                       ))}
                     </select>
@@ -357,7 +383,14 @@ export function AILab({ id }: { id: LabId }) {
                         initial={still ? false : { opacity: 0, y: 5 }}
                         animate={{ opacity: 1, y: 0 }}
                       >
-                        {fmt(focus.after)}
+                        <span
+                          data-changed={
+                            (updated && focus.after !== focus.before) ||
+                            undefined
+                          }
+                        >
+                          {fmt(focus.after)}
+                        </span>
                       </motion.strong>
                     </div>
                   ) : (
@@ -369,8 +402,14 @@ export function AILab({ id }: { id: LabId }) {
                 </>
               ) : (
                 <>
-                  <strong>等待环境反馈</strong>
-                  <span>先选择行动，再用奖励和下一状态计算 Q 的更新方向。</span>
+                  <strong>
+                    {panel === "联动" && linked ? "关联说明" : "等待环境反馈"}
+                  </strong>
+                  <span>
+                    {panel === "联动" && linked
+                      ? linked.note
+                      : "先选择行动，再用奖励和下一状态计算 Q 的更新方向。"}
+                  </span>
                 </>
               )}
             </div>
@@ -479,11 +518,17 @@ export function AILab({ id }: { id: LabId }) {
               <h2>{frame.title}</h2>
             </div>
             <div className="experiment-note-tabs" aria-label="实验面板">
-              {["讲解", "张量", "参数", "趋势", "设置"].map((name) => (
+              {["讲解", "联动", "张量", "参数", "趋势", "设置"].map((name) => (
                 <button
                   key={name}
                   aria-pressed={panel === name}
-                  onClick={() => setPanel(name)}
+                  onClick={() => {
+                    if (name === "联动" && panel !== "联动") {
+                      setLinkedTensorName(undefined);
+                      setParameter("");
+                    }
+                    setPanel(name);
+                  }}
                 >
                   {name}
                 </button>
@@ -495,7 +540,6 @@ export function AILab({ id }: { id: LabId }) {
                 className="ai-explanation"
                 label="AI 关键步骤讲解"
                 blocks={[
-                  ...(inspect ? [{ title: "图中检查", text: inspect }] : []),
                   {
                     title: compact ? frame.title : "计算公式",
                     text: frame.formula,
@@ -510,6 +554,32 @@ export function AILab({ id }: { id: LabId }) {
                 ]}
               />
             )}
+            {panel === "联动" &&
+              (linked && selection ? (
+                <TensorView
+                  key={`${selectionKey(selection)}-${selectionVisit}`}
+                  frame={frame}
+                  tensors={linked.tensors}
+                  still={!!still}
+                  context={`联动：${linked.title} · 点击数值检查`}
+                  onParameter={setParameter}
+                  onTensorChange={(index) => {
+                    setLinkedTensorName(linked.tensors[index].name);
+                    setParameter("");
+                  }}
+                />
+              ) : (
+                <AdaptiveNotes
+                  className="ai-link-help"
+                  label="图示联动说明"
+                  blocks={[
+                    {
+                      title: "点选节点或连线",
+                      text: "选择图中节点查看对应张量，选择连线定位具体权重或算子参数。键盘 Tab 可定位，Enter / 空格可打开。",
+                    },
+                  ]}
+                />
+              ))}
             {panel === "张量" && (
               <TensorView
                 key={`${frame.phase}-${frame.iteration}`}
@@ -573,7 +643,10 @@ export function AILab({ id }: { id: LabId }) {
                                 backward || updated
                                   ? fmt(p.gradient)
                                   : "待计算",
-                                fmt(p.after),
+                                {
+                                  value: fmt(p.after),
+                                  changed: updated && p.after !== p.before,
+                                },
                               ]),
                           },
                         ]

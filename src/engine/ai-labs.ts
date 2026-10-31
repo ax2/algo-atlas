@@ -1,3 +1,4 @@
+import { trainingTensors } from "./ai-inspection-data";
 import type { Frame, Node, Edge } from "./model";
 import { neuralModel, transformerModel } from "./ai-models";
 export type LabId = "neural-training" | "transformer-lab" | "reinforcement-lab";
@@ -13,6 +14,12 @@ export type Tensor = {
   rows: (number | string)[][];
   columns?: string[];
   labels?: string[];
+  beforeRows?: (number | string)[][];
+  changed?: [number, number][];
+  focus?: [number, number];
+  parameters?: string[];
+  parameterGroups?: string[];
+  note?: string;
 };
 export type Update = {
   name: string;
@@ -32,6 +39,7 @@ export type LabFrame = {
   question: string;
   diagram: Frame;
   tensors: Tensor[];
+  data?: Record<string, Tensor[]>;
   updates: Update[];
   history: number[];
   checkpoint: boolean;
@@ -228,6 +236,8 @@ export function runAILab(id: LabId, config: LabConfig): LabTrace {
     const model = transformer
       ? transformerModel(config.variant, parameters)
       : neuralModel(config.variant, parameters);
+    const catalog = trainingTensors(model);
+    let visibleData: Record<string, Tensor[]> = {};
     parameterCount = model.params.length;
     history.push(model.loss.value);
     const paramsBefore = model.params.map((p) => ({
@@ -250,7 +260,9 @@ export function runAILab(id: LabId, config: LabConfig): LabTrace {
       updates = paramsBefore,
       back = false,
     ) => {
+      visibleData = { ...visibleData, [phase]: tensors };
       frames.push({
+        data: visibleData,
         phase,
         title,
         iteration: epoch + 1,
@@ -281,13 +293,7 @@ export function runAILab(id: LabId, config: LabConfig): LabTrace {
         "input",
         "读取整批训练样本",
         0,
-        [
-          {
-            name: "X 与标签 y · 4×3",
-            rows: model.data.map((r, i) => [...r, model.targets[i]]),
-            columns: ["x₁", "x₂", "y"],
-          },
-        ],
+        catalog.input,
         "X: 4×2 → H: 4×3 → z: 4×1",
         "把四个样本一起计算，避免把一个样本的梯度误当成整批梯度。",
         `本轮读取同一组 ${config.variant ? "AND" : "XOR"} 标签；从上一轮参数继续计算。`,
@@ -298,7 +304,7 @@ export function runAILab(id: LabId, config: LabConfig): LabTrace {
         "forward",
         "隐藏层提取非线性特征",
         1,
-        [{ name: "H = tanh(XW₁ + b₁) · 4×3", rows: model.hidden }],
+        catalog.forward,
         "hⱼ = tanh(Σᵢ xᵢW₁ᵢⱼ + b₁ⱼ)",
         "非线性隐藏层能改变输入表示；只有线性层堆叠仍等价于一次线性变换。",
         `第一个样本的隐藏状态为 ${model.hidden[0].map(fmt).join("，")}。`,
@@ -309,17 +315,7 @@ export function runAILab(id: LabId, config: LabConfig): LabTrace {
         "prediction",
         "输出概率，不偷看标签",
         2,
-        [
-          {
-            name: "样本预测 · 4×3",
-            rows: model.predictions.map((p, i) => [
-              model.logits[i],
-              p,
-              model.targets[i],
-            ]),
-            columns: ["logit", "P(y=1)", "标签"],
-          },
-        ],
+        catalog.prediction,
         "z = hW₂ + b₂；p = sigmoid(z)",
         "logit 是未归一化证据；sigmoid 把它压到 0 与 1 之间，0.5 只是展示分类阈值。",
         "预测来自当前参数；此处展示标签用于比较，模型计算预测时没有读它。",
@@ -331,15 +327,7 @@ export function runAILab(id: LabId, config: LabConfig): LabTrace {
         "input",
         "嵌入与位置编码进入模型",
         1,
-        [
-          {
-            name: "Token ID → 下一个 Token",
-            rows: model.tokens.map((t, i) => [t, model.targets[i]]),
-            columns: ["输入", "训练目标"],
-          },
-          { name: "X = E[token] + PE · 3×4", rows: model.x },
-          { name: "固定正弦位置编码 · 3×4", rows: model.position },
-        ],
+        catalog.input,
         "Xᵢ = E[tokenᵢ] + PEᵢ",
         "词向量给出可训练的内容表示，位置编码使同样的 token 在不同位置具有不同输入。",
         "词表只有 4 个符号 A/B/C/D，输入长度 3；每个位置预测下一个符号。",
@@ -350,11 +338,7 @@ export function runAILab(id: LabId, config: LabConfig): LabTrace {
         "qkv",
         "投影为查询、键和值",
         2,
-        [
-          { name: "Q · 3×4", rows: model.q },
-          { name: "K · 3×4", rows: model.k },
-          { name: "V · 3×4", rows: model.v },
-        ],
+        catalog.qkv,
         "Q = LN(X)WQ；K = LN(X)WK；V = LN(X)WV",
         "Q 与 K 决定寻找谁，V 决定从对方取回什么。两个头各使用两维，最后拼接回四维。",
         "三种投影共享输入但使用独立参数；本模型是 Pre-LN。",
@@ -365,14 +349,7 @@ export function runAILab(id: LabId, config: LabConfig): LabTrace {
         "mask",
         "因果掩码与双头 Softmax",
         3,
-        model.weights.flatMap((rows, h) => [
-          { name: `头 ${h + 1} · 掩码后分数`, rows: model.scores[h] },
-          {
-            name: `头 ${h + 1} · 注意力概率`,
-            rows,
-            columns: ["位置 0", "位置 1", "位置 2"],
-          },
-        ]),
+        catalog.mask,
         "Aₕ = softmax(QₕKₕᵀ / √2 + M)",
         "预测下一个 token 时不能看到未来。先屏蔽 j>i 的分数，再逐行归一化可见位置。",
         "上三角概率严格为 0；每个头每行概率和为 1。第一行只允许关注自己。",
@@ -383,12 +360,7 @@ export function runAILab(id: LabId, config: LabConfig): LabTrace {
         "residual",
         "合并双头，经过残差与前馈层",
         4,
-        [
-          { name: "双头拼接 · 3×4", rows: model.concat },
-          { name: "R = X + Concat·WO", rows: model.residual },
-          { name: "FFN(LN(R)) · 3×4", rows: model.feed },
-          { name: "Z = R + FFN · 3×4", rows: model.output },
-        ],
+        catalog.residual,
         "R=X+Concat(head₁,head₂)WO；Z=R+ReLU(LN(R)F₁+b₁)F₂+b₂",
         "注意力混合不同位置的信息，FFN 在每个位置独立变换特征；残差保留原来的通道并提供梯度路径。",
         "FFN 中间维度 6，输出维度回到 4 才能相加。",
@@ -399,13 +371,7 @@ export function runAILab(id: LabId, config: LabConfig): LabTrace {
         "prediction",
         "词表分布与教师强制目标",
         5,
-        [
-          {
-            name: "每个位置的下一符号概率 · 3×4",
-            rows: model.probabilities,
-            columns: ["A", "B", "C", "D"],
-          },
-        ],
+        catalog.prediction,
         "P = softmax(LN(Z)U + b)",
         "训练时输入真实前缀并计算所有位置的目标损失；推理才逐个追加模型生成的 token。",
         "显示四种输出符号的概率，并与右移标签比较。",
@@ -417,7 +383,7 @@ export function runAILab(id: LabId, config: LabConfig): LabTrace {
       "loss",
       "汇总交叉熵损失",
       transformer ? 6 : 3,
-      [{ name: "本轮平均损失", rows: [[model.loss.value]] }],
+      catalog.loss,
       transformer
         ? "L = −(1/3) Σᵢ log Pᵢ[targetᵢ]"
         : "L = −(1/4) Σ[y log p + (1−y)log(1−p)]",
@@ -481,7 +447,27 @@ export function runAILab(id: LabId, config: LabConfig): LabTrace {
       "把学习率加倍，参数变化是否加倍？损失变化也一定加倍吗？",
       updates,
     );
-    frames.at(-1)!.history.push(after.loss.value);
+    const final = frames.at(-1)!;
+    const afterCatalog = trainingTensors(after);
+    final.data = Object.fromEntries(
+      Object.entries(afterCatalog).map(([phase, tensors]) => [
+        phase,
+        tensors.map((t, i) => {
+          const beforeRows = catalog[phase][i].rows;
+          return {
+            ...t,
+            beforeRows,
+            note: "更新后激活；梯度来自更新前反传",
+            changed: t.rows.flatMap((row, r) =>
+              row.flatMap((v, c) =>
+                v !== beforeRows[r][c] ? [[r, c] as [number, number]] : [],
+              ),
+            ),
+          };
+        }),
+      ]),
+    );
+    final.history.push(after.loss.value);
     if ("hidden" in after)
       frames.at(-1)!.diagram = neuralDiagram(after, "update");
   }
@@ -613,11 +599,24 @@ function reinforcement(c: LabConfig): LabTrace {
           check,
           question: "如果下一状态是终点，目标中还能保留未来 Q 值吗？",
           checkpoint: phase === "target" || phase === "update",
-          diagram: diagram(at, phase === "environment" ? state : undefined),
+          diagram: {
+            ...diagram(at, phase === "environment" ? state : undefined),
+            nodes: diagram(at).nodes?.map((n) => ({
+              ...n,
+              updating: update && n.id === String(state),
+            })),
+          },
           tensors: [
             {
               name: "Q(s,a) · 12×4",
               rows: q.map((r) => [...r]),
+              beforeRows: update
+                ? q.map((r, s) =>
+                    r.map((v, a) => (s === state && a === action ? old : v)),
+                  )
+                : undefined,
+              changed: update && old !== updated ? [[state, action]] : [],
+              focus: phase === "target" || update ? [state, action] : undefined,
               columns: actions,
               labels: q.map((_, i) => `s${i}`),
             },

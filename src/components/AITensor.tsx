@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
-import type { LabFrame } from "../engine/ai-labs";
+import type { LabFrame, Tensor } from "../engine/ai-labs";
 import { fmt } from "../engine/ai-labs";
 
 // Keep numerical cells readable: page rows/columns at their real pixel size.
@@ -8,18 +8,44 @@ import { fmt } from "../engine/ai-labs";
 export function TensorView({
   frame,
   still,
+  tensors,
+  onParameter,
+  onTensorChange,
+  context,
 }: {
   frame: LabFrame;
   still: boolean;
+  tensors?: Tensor[];
+  context?: string;
+  onParameter?: (name: string) => void;
+  onTensorChange?: (index: number) => void;
 }) {
-  const [selected, setSelected] = useState(0),
+  const [selectedName, setSelectedName] = useState<string>(),
     [row, setRow] = useState(0),
     [col, setCol] = useState(0),
     [size, setSize] = useState({ rows: 1, cols: 4 }),
     [inspect, setInspect] = useState("");
   const box = useRef<HTMLDivElement>(null),
     head = useRef<HTMLTableSectionElement>(null);
-  const tensor = frame.tensors[Math.min(selected, frame.tensors.length - 1)];
+  const available = tensors || frame.tensors;
+  const index = Math.max(
+    0,
+    available.findIndex((t) => t.name === selectedName),
+  );
+  const tensor = available[index];
+  const previousTensor = useRef<string>(undefined);
+  useLayoutEffect(() => {
+    setInspect("");
+    if (tensor.focus || previousTensor.current !== tensor.name)
+      setRow(tensor.focus?.[0] ?? 0);
+    if (tensor.focus || previousTensor.current !== tensor.name)
+      setCol(
+        tensor.focus?.[1] !== undefined
+          ? Math.max(0, tensor.focus[1] - size.cols + 1)
+          : 0,
+      );
+    previousTensor.current = tensor.name;
+  }, [tensor, frame, size.cols]);
   useLayoutEffect(() => {
     const measure = () => {
       const rows = Math.max(
@@ -31,7 +57,12 @@ export function TensorView({
       );
       const cols = Math.max(
         1,
-        Math.floor((box.current!.clientWidth - 36) / 64),
+        Math.floor(
+          (box.current!.clientWidth -
+            (head.current?.querySelector("th")?.getBoundingClientRect().width ||
+              36)) /
+            64,
+        ),
       );
       setSize((old) =>
         old.rows === rows && old.cols === cols ? old : { rows, cols },
@@ -54,22 +85,27 @@ export function TensorView({
     <section className="ai-tensor" aria-label="张量观察窗">
       <select
         aria-label="选择张量"
-        value={selected}
+        value={index}
         onChange={(e) => {
-          setSelected(+e.target.value);
+          setSelectedName(available[+e.target.value].name);
+          onTensorChange?.(+e.target.value);
           setRow(0);
           setCol(0);
           setInspect("");
         }}
       >
-        {frame.tensors.map((t, i) => (
+        {available.map((t, i) => (
           <option key={t.name} value={i}>
             {t.name}
           </option>
         ))}
       </select>
       <div className="tensor-window" ref={box}>
-        <table className="tensor-table" aria-label={tensor.name}>
+        <table
+          className="tensor-table"
+          data-parameters={!!tensor.parameters}
+          aria-label={tensor.name}
+        >
           <thead ref={head}>
             <tr>
               <th scope="col">行</th>
@@ -85,14 +121,43 @@ export function TensorView({
               <tr key={r + i}>
                 <th scope="row">{tensor.labels?.[r + i] ?? r + i}</th>
                 {columns.map((j) => (
-                  <td key={j}>
+                  <td
+                    key={j}
+                    data-changed={
+                      tensor.changed?.some(
+                        ([a, b]) => a === r + i && b === j,
+                      ) || undefined
+                    }
+                    data-active={
+                      (tensor.focus?.[0] === r + i &&
+                        tensor.focus?.[1] === j) ||
+                      undefined
+                    }
+                  >
                     <motion.button
+                      key={`${r + i}-${j}-${String(values[j])}`}
+                      title={`原值 ${tensor.beforeRows?.[r + i]?.[j] ?? values[j]}；当前值 ${values[j]}`}
+                      aria-description={
+                        tensor.beforeRows
+                          ? `更新前 ${tensor.beforeRows[r + i][j]}`
+                          : undefined
+                      }
                       initial={still ? false : { opacity: 0 }}
                       animate={{ opacity: 1 }}
                       aria-label={`单元格 [${r + i},${j}] = ${values[j]}`}
-                      onClick={() =>
-                        setInspect(`单元格 [${r + i},${j}] = ${values[j]}`)
-                      }
+                      onClick={() => {
+                        const before = tensor.beforeRows?.[r + i]?.[j],
+                          value = values[j];
+                        const show = (v: number | string) =>
+                          typeof v === "number" ? fmt(v) : v;
+                        setInspect(
+                          before !== undefined && before !== value
+                            ? `单元格 [${r + i},${j}] ${show(before)} → ${show(value)}`
+                            : `单元格 [${r + i},${j}] = ${value}`,
+                        );
+                        if (tensor.parameters?.[r + i])
+                          onParameter?.(tensor.parameters[r + i]);
+                      }}
                     >
                       {typeof values[j] === "number"
                         ? fmt(values[j])
@@ -147,7 +212,10 @@ export function TensorView({
         )}
       </div>
       <p className="tensor-inspect" role="status">
-        {inspect || "点击数值检查完整精度 · 显示保留 4 位小数"}
+        {inspect ||
+          tensor.note ||
+          context ||
+          "点击数值检查完整精度 · 显示保留 4 位小数"}
       </p>
     </section>
   );
