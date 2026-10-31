@@ -12,7 +12,11 @@ test("all lessons and both scenarios render at beginning, middle and end", async
   for (const t of topics) {
     await page.goto("/#/lesson/" + t.id);
     await expect(page.getByRole("heading", { level: 1 })).toContainText(t.name);
-    await expect(page.locator(".input-context")).toBeVisible();
+    await expect(page.getByLabel("自适应图解")).toBeVisible();
+    await page
+      .getByRole("navigation", { name: "课程章节" })
+      .getByRole("button", { name: "图解实验" })
+      .click();
     for (const variant of t.mode === "scenario" ? ["0", "1"] : ["0"]) {
       if (variant === "1")
         await page
@@ -25,7 +29,34 @@ test("all lessons and both scenarios render at beginning, middle and end", async
         await slider.fill(String(pos));
         await expect(slider).toHaveValue(String(pos));
         await expect(page.locator(".current-step h4")).not.toBeEmpty();
-        await expect(page.locator(".step-explanation")).toBeVisible();
+        await expect(page.locator(".note-deck")).toBeVisible();
+        const geometry = await page.locator(".single-screen").evaluate((el) => {
+          const r = el.getBoundingClientRect();
+          const scrollbars = [...el.querySelectorAll("*")]
+            .filter((child) => {
+              const css = getComputedStyle(child);
+              return (
+                child.clientHeight > 0 &&
+                ((["auto", "scroll"].includes(css.overflowY) &&
+                  child.scrollHeight > child.clientHeight + 1) ||
+                  (["auto", "scroll"].includes(css.overflowX) &&
+                    child.scrollWidth > child.clientWidth + 1))
+              );
+            })
+            .map((child) => child.className);
+          const note = el.querySelector(".note-page")!;
+          return {
+            height: r.height,
+            viewport: innerHeight,
+            scrollbars,
+            noteFits: note.scrollHeight <= note.clientHeight + 1,
+          };
+        });
+        expect(geometry.scrollbars, t.id + " nested scrollbar").toEqual([]);
+        expect(geometry.height, t.id + " stage height").toBeLessThan(
+          geometry.viewport,
+        );
+        expect(geometry.noteFits, t.id + " clipped note").toBe(true);
         expect(
           await page.evaluate(
             () => document.documentElement.scrollWidth <= innerWidth + 1,
@@ -48,7 +79,7 @@ test("balanced tree guided pause, input queue, AI and practice workflow", async 
   const out = process.env.ATLAS_EVIDENCE_DIR || test.info().outputDir;
   await mkdir(out, { recursive: true });
   await page.goto("/#/lesson/avl");
-  await expect(page.locator(".input-context")).toContainText("初始数据");
+  await expect(page.locator(".canvas .original-input")).toBeVisible();
   await page.getByLabel("讲解模式：关键节点自动暂停").check();
   await page.getByRole("combobox", { name: "动画速度" }).selectOption("140");
   await page.getByRole("button", { name: "播放", exact: true }).click();
@@ -56,19 +87,34 @@ test("balanced tree guided pause, input queue, AI and practice workflow", async 
     page.getByRole("button", { name: "播放", exact: true }),
   ).toBeVisible();
   await expect(page.locator(".current-step")).toContainText("插入后的完整树");
-  await expect(page.locator(".input-context")).toContainText("下一个");
-  await page
-    .locator(".checkpoint-list button")
+  await expect(page.locator(".canvas .processing-row")).toContainText("下一个");
+  const checkpoint = page.getByRole("combobox", { name: "关键节点导航" });
+  const rotation = await checkpoint
+    .locator("option")
     .filter({ hasText: "左旋修复平衡" })
     .last()
+    .getAttribute("value");
+  await checkpoint.selectOption(rotation!);
+  await page
+    .getByRole("navigation", { name: "实验讲解" })
+    .getByRole("button", { name: "详解", exact: true })
     .click();
-  await expect(page.locator(".step-explanation")).toContainText("祖先");
-  const beforeZoom = await page.locator(".diagram-content").boundingBox();
-  await page.getByRole("button", { name: "放大图解", exact: true }).click();
-  expect(
-    (await page.locator(".diagram-content").boundingBox())!.width,
-  ).toBeGreaterThan(beforeZoom!.width);
-  await page.getByRole("button", { name: "适应宽度", exact: true }).click();
+  // Explanation remains complete and is now read one focused page at a time.
+  let explanation = "";
+  while (true) {
+    explanation += await page.locator(".step-explanation").innerText();
+    const next = page.getByRole("button", { name: "讲解下一页", exact: true });
+    if (!(await next.count()) || (await next.isDisabled())) break;
+    await next.click();
+  }
+  expect(explanation).toContain("祖先");
+  await expect(
+    page.getByRole("button", { name: "专注模式", exact: true }),
+  ).toBeVisible();
+  const fitted = await page.locator(".fit-scene").boundingBox();
+  const viewport = await page.locator(".fit-viewport").boundingBox();
+  expect(fitted!.width).toBeLessThanOrEqual(viewport!.width + 2);
+  expect(fitted!.height).toBeLessThanOrEqual(viewport!.height + 2);
   await page.waitForTimeout(1000);
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.waitForTimeout(400);

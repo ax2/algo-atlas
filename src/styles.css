@@ -4043,76 +4043,6 @@ main {
 #lesson-panel {
   min-width: 0;
 }
-#section-experiment .lab-panel {
-  height: 1140px;
-  overflow: auto;
-  overflow-anchor: none;
-  display: flex;
-  flex-direction: column;
-}
-#section-experiment .lab-panel > * {
-  flex-shrink: 0;
-}
-#section-experiment .input-context {
-  height: 210px;
-  overflow: auto;
-  margin-bottom: 10px;
-}
-#section-experiment .original-input {
-  color: var(--mint);
-}
-#section-experiment .canvas {
-  height: 410px;
-  min-height: 410px;
-}
-#section-experiment .diagram-viewport,
-#section-experiment .diagram-plain {
-  flex: 1;
-  min-height: 0;
-  max-height: none;
-  overflow: auto;
-}
-#section-experiment .diagram-tools {
-  flex-shrink: 0;
-}
-#section-experiment .inspect {
-  height: 44px;
-  overflow: auto;
-  margin: 8px 0;
-}
-#section-experiment .inspector {
-  height: 1140px;
-  overflow: auto;
-  overflow-anchor: none;
-  display: block;
-}
-#section-experiment .checkpoint-list {
-  min-height: 44px;
-}
-.worklist-panel {
-  height: 116px;
-  overflow: auto;
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--purple);
-  border-radius: 6px;
-  padding: 10px 12px;
-  margin-bottom: 12px;
-  font-size: 12px;
-}
-.worklist-panel > div + div {
-  margin-top: 10px;
-}
-.worklist-panel strong {
-  color: var(--purple);
-  font-size: 11px;
-}
-.worklist-panel .data-chips {
-  padding-top: 5px;
-}
-.worklist-panel em {
-  font-style: normal;
-  color: var(--muted);
-}
 .trace-table,
 .final-output {
   margin-top: 20px;
@@ -4277,9 +4207,6 @@ main {
   margin-left: auto;
 }
 @media (max-width: 1000px) {
-  #section-experiment .inspector {
-    height: 820px;
-  }
   .implementation-grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -4293,16 +4220,6 @@ main {
   }
   .lesson-section-title small {
     display: none;
-  }
-  #section-experiment .lab-panel {
-    height: 1230px;
-  }
-  #section-experiment .input-context {
-    height: 240px;
-  }
-  #section-experiment .canvas {
-    height: 390px;
-    min-height: 390px;
   }
   .implementation-overview {
     padding: 18px;
@@ -4335,4 +4252,530 @@ main {
     max-height: none;
     overflow: visible;
   }
+}
+/* Stage 006: one viewport, one canvas, no nested scrolling. */
+#section-experiment {
+  scroll-margin-top: 72px;
+}
+#section-experiment .lesson-section-title {
+  margin-bottom: 14px;
+}
+#section-experiment .single-screen {
+  height: calc(100svh - 152px);
+  grid-template-columns: minmax(0, 1fr) 292px;
+  gap: 12px;
+  min-height: 0;
+  overflow-anchor: none;
+}
+#section-experiment .single-screen:fullscreen {
+  height: 100dvh;
+  width: 100vw;
+  padding: 20px;
+  background: var(--bg);
+  grid-template-columns: minmax(0, 1fr) 320px;
+}
+#section-experiment .lab-panel {
+  height: 100%;
+  min-height: 0;
+  padding: 12px;
+  overflow: visible;
+  display: grid;
+  grid-template-rows: 37px minmax(0, 1fr) 46px 30px;
+  gap: 9px;
+}
+#section-experiment .input-toolbar {
+  min-width: 0;
+  gap: 6px;
+}
+#section-experiment .input-main {
+  gap: 8px;
+}
+#section-experiment .input-main input,
+#section-experiment .input-main select {
+  min-width: 0;
+}
+#section-experiment .canvas {
+  height: auto;
+  min-height: 0;
+  padding: 10px;
+  display: flex;
+  gap: 6px;
+  overflow: visible;
+  position: relative;
+}
+#section-experiment .canvas-top {
+  flex-shrink: 0;
+  align-items: center;
+  opacity: 1;
+  gap: 6px;
+}
+#section-experiment .canvas-top > span:first-child {
+  margin-right: auto;
+  font-size: 9px;
+}
+#section-experiment .focus-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--muted);
+  padding: 4px;
+}
+#section-experiment .canvas-context {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+#section-experiment .canvas-context:empty {
+  display: none;
+}
+#section-experiment .processing-row {
+  font-size: 11px;
+  margin: 0;
+  gap: 14px;
+  padding: 0 3px;
+}
+#section-experiment .processing-row b {
+  color: var(--orange);
+}
+#section-experiment .inline-data {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  min-width: 0;
+  min-height: 24px;
+}
+#section-experiment .inline-data strong {
+  flex-shrink: 0;
+  color: var(--mint);
+  font-size: 10px;
+}
+#section-experiment .inline-data select {
+  max-width: 120px;
+  padding: 3px;
+  height: 26px;
+  font-size: 10px;
+}
+#section-experiment .inline-data-values {
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+  flex: 1;
+  min-width: 0;
+  color: var(--text);
+}
+#section-experiment .experiment-pager {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--muted);
+}
+#section-experiment .experiment-pager button {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+}
+#section-experiment .experiment-pager button:disabled {
+  opacity: 0.25;
+}
+#section-experiment .fit-viewport {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  position: relative;
+}
+#section-experiment .fit-scene {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 680px;
+  transform-origin: center;
+}
+#section-experiment .fit-scene .graph-svg {
+  width: 680px;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  display: block;
+  padding: 0;
+  margin: 0;
+}
+#section-experiment .fit-scene .bars-svg {
+  width: 680px;
+  height: 300px;
+  min-height: 0;
+  max-height: none;
+  padding: 0;
+  display: block;
+}
+#section-experiment .fit-scene .matrix-scroll {
+  overflow: visible;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  padding: 0;
+}
+#section-experiment .fit-scene .matrix {
+  max-width: 100%;
+  table-layout: fixed;
+}
+#section-experiment .fit-scene .matrix td button {
+  min-width: 0;
+  padding: 6px;
+}
+#section-experiment .fit-scene .cells {
+  min-height: 0;
+  padding: 8px;
+}
+#section-experiment .worklist-panel {
+  height: 38px;
+  min-height: 38px;
+  overflow: visible;
+  margin: 0;
+  padding: 3px 6px;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+}
+#section-experiment .worklist-panel:empty {
+  display: none;
+}
+#section-experiment .canvas-bottom {
+  margin: 0;
+  gap: 12px;
+  flex-shrink: 0;
+}
+#section-experiment .inspect {
+  height: 22px;
+  min-height: 22px;
+  overflow: visible;
+  font-size: 10px;
+  margin: 0;
+  padding: 0 3px;
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+#section-experiment .inspect svg {
+  flex-shrink: 0;
+}
+#section-experiment .playback {
+  margin: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 5px;
+}
+#section-experiment .timeline {
+  gap: 5px;
+  padding: 0 4px;
+}
+#section-experiment .play-button > svg {
+  width: 36px;
+  height: 36px;
+  padding: 10px;
+}
+#section-experiment .experiment-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+#section-experiment .guided-toggle {
+  font-size: 10px;
+  margin: 0;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+#section-experiment .experiment-footer > select {
+  margin-left: auto;
+  width: 44%;
+  min-width: 0;
+  height: 28px;
+  padding: 3px;
+  font-size: 10px;
+}
+#section-experiment .inspector {
+  height: 100%;
+  min-height: 0;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  gap: 12px;
+}
+#section-experiment .current-step {
+  padding: 0;
+  background: none;
+  border: 0;
+  flex-shrink: 0;
+  min-width: 0;
+}
+#section-experiment .current-step .section-label {
+  margin-bottom: 8px;
+}
+#section-experiment .current-step h4 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.5;
+}
+#section-experiment .experiment-note-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  flex-shrink: 0;
+  padding: 3px;
+  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+#section-experiment .experiment-note-tabs button {
+  padding: 7px 0;
+  font-size: 11px;
+  border-radius: 4px;
+  color: var(--muted);
+}
+#section-experiment .experiment-note-tabs button[aria-pressed="true"] {
+  background: var(--surface-raised);
+  color: var(--mint);
+}
+#section-experiment .note-deck {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: none;
+  overflow: visible;
+}
+#section-experiment .note-page {
+  flex: 1;
+  min-height: 0;
+}
+#section-experiment .note-page h5 {
+  font-size: 11px;
+  color: var(--mint);
+  margin: 6px 0 10px;
+  font-weight: 500;
+}
+#section-experiment .note-page p {
+  font-size: 13px;
+  line-height: 1.9;
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+#section-experiment .note-deck > .experiment-pager {
+  justify-content: flex-end;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+#section-experiment .note-page .trace-table {
+  font-size: 12px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border-collapse: collapse;
+}
+#section-experiment .note-page .trace-table th,
+#section-experiment .note-page .trace-table td {
+  padding: 6px 4px;
+  overflow-wrap: anywhere;
+}
+#section-experiment .form-error {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: 38px;
+  z-index: 4;
+  background: var(--surface);
+  border: 1px solid var(--orange);
+  margin: 0;
+  padding: 10px;
+  font-size: 12px;
+}
+@media (max-width: 1100px) {
+  #section-experiment .single-screen {
+    grid-template-columns: minmax(0, 1fr) 240px;
+  }
+  #section-experiment .play-button span {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  #section-experiment .single-screen,
+  #section-experiment .single-screen:fullscreen {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) 218px;
+    gap: 8px;
+  }
+  #section-experiment .single-screen:fullscreen {
+    padding: 8px;
+  }
+  #section-experiment .lab-panel {
+    padding: 8px;
+    grid-template-rows: 34px minmax(0, 1fr) 36px 28px;
+    gap: 6px;
+  }
+  #section-experiment .input-main > span {
+    display: none;
+  }
+  #section-experiment .input-main input,
+  #section-experiment .input-main select,
+  #section-experiment .target-label input {
+    height: 32px;
+    font-size: 12px;
+  }
+  #section-experiment .canvas {
+    padding: 6px;
+    gap: 4px;
+  }
+  #section-experiment .canvas-top > span:first-child {
+    font-size: 8px;
+    letter-spacing: 0;
+  }
+  #section-experiment .inline-data {
+    gap: 4px;
+    font-size: 10px;
+  }
+  #section-experiment .inline-data select {
+    max-width: 93px;
+  }
+  #section-experiment .canvas-bottom {
+    font-size: 8px;
+    gap: 8px;
+  }
+  #section-experiment .inspect {
+    font-size: 9px;
+  }
+  #section-experiment .playback .icon-button {
+    width: 28px;
+    height: 28px;
+    padding: 4px;
+  }
+  #section-experiment .playback .button.compact {
+    padding: 5px;
+  }
+  #section-experiment .playback .button.compact span,
+  #section-experiment .speed > svg {
+    display: none;
+  }
+  #section-experiment .play-button {
+    padding: 0;
+  }
+  #section-experiment .play-button > svg {
+    width: 30px;
+    height: 30px;
+    padding: 8px;
+  }
+  #section-experiment .timeline {
+    min-width: 40px;
+    font-size: 9px;
+  }
+  #section-experiment .speed select {
+    width: 47px;
+    padding: 4px 1px;
+  }
+  #section-experiment .guided-toggle {
+    font-size: 9px;
+  }
+  #section-experiment .experiment-footer > select {
+    font-size: 9px;
+    width: 40%;
+  }
+  #section-experiment .inspector {
+    padding: 9px 11px;
+    gap: 5px;
+  }
+  #section-experiment .current-step {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  #section-experiment .current-step .section-label {
+    font-size: 9px;
+    gap: 5px;
+    margin: 0;
+    flex-shrink: 0;
+  }
+  #section-experiment .current-step h4 {
+    font-size: 13px;
+  }
+  #section-experiment .experiment-note-tabs button {
+    padding: 4px 0;
+    font-size: 10px;
+  }
+  #section-experiment .note-page h5 {
+    margin: 3px 0;
+    font-size: 10px;
+  }
+  #section-experiment .note-page p {
+    font-size: 12px;
+    line-height: 1.65;
+  }
+  #section-experiment .note-deck > .experiment-pager {
+    padding-top: 3px;
+  }
+  #section-experiment .note-page .trace-table {
+    font-size: 10px;
+  }
+  #section-experiment .note-page .trace-table th,
+  #section-experiment .note-page .trace-table td {
+    padding: 3px;
+  }
+}
+@media (max-height: 650px) and (min-width: 761px) {
+  #section-experiment .single-screen {
+    height: calc(100svh - 130px);
+  }
+  #section-experiment .inspector {
+    gap: 7px;
+  }
+  #section-experiment .note-page p {
+    font-size: 12px;
+    line-height: 1.6;
+  }
+}
+#section-experiment .input-main select {
+  padding: 5px 8px;
+}
+@media (max-width: 760px) and (max-height: 740px) {
+  #section-experiment > .lesson-section-title {
+    display: none;
+  }
+  #section-experiment .single-screen {
+    height: calc(100svh - 88px);
+    grid-template-rows: minmax(0, 1fr) 176px;
+  }
+  #section-experiment .single-screen:fullscreen {
+    height: 100dvh;
+  }
+  #section-experiment .note-page p {
+    font-size: 12px;
+    line-height: 1.55;
+  }
+  #section-experiment .canvas-bottom {
+    display: none;
+  }
+  #section-experiment .current-step h4 {
+    font-size: 12px;
+  }
+}
+#section-experiment .current-step {
+  margin: 0;
+}
+/* Keep the unmeasured scene from expanding the mobile layout viewport. The
+   measured scene is fitted on both axes; only decorative glow may extend. */
+#section-experiment .fit-viewport {
+  overflow: clip;
 }

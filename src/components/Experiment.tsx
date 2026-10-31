@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { motion } from "motion/react";
 import { useMotionPreference } from "../services/motion-preference";
 import {
@@ -9,13 +9,15 @@ import {
   SkipBack,
   Shuffle,
   Info,
-  ArrowRight,
   SlidersHorizontal,
   Sparkles,
+  Maximize,
+  Minimize,
 } from "lucide-react";
 import type { Topic } from "../content/types";
 import { runTrace } from "../engine";
 import { Diagram } from "./AnimatedDiagram";
+import { FitDiagram, ExperimentNotes, InlineData } from "./ExperimentPanels";
 export type ExperimentState = { input: string; target: number; step: number };
 export function Experiment({
   topic,
@@ -33,13 +35,18 @@ export function Experiment({
     [step, setStep] = useState(Math.max(0, initial.step)),
     [playing, setPlaying] = useState(false),
     [speed, setSpeed] = useState(700),
-    [inspect, setInspect] = useState(""),
+    [inspection, setInspection] = useState({ step: -1, text: "" }),
     [error, setError] = useState("");
   const [effects, setEffects] = useState(true);
   const [guided, setGuided] = useState(false);
-  const [zoom, setZoom] = useState(() =>
-    window.matchMedia("(max-width: 600px)").matches ? 1.8 : 1,
-  );
+  const stage = useRef<HTMLDivElement>(null);
+  const [fullscreen, setFullscreen] = useState(false);
+  useEffect(() => {
+    const sync = () =>
+      setFullscreen(document.fullscreenElement === stage.current);
+    document.addEventListener("fullscreenchange", sync);
+    return () => document.removeEventListener("fullscreenchange", sync);
+  }, []);
   const reduced = useMotionPreference();
   const computed = useMemo(() => {
     try {
@@ -53,7 +60,8 @@ export function Experiment({
   }, [topic.id, topic.input, input, target]);
   const trace = computed.trace,
     position = Math.min(step, trace.frames.length - 1),
-    frame = trace.frames[position];
+    frame = trace.frames[position],
+    inspect = inspection.step === position ? inspection.text : "";
   useEffect(() => {
     onState({
       input: computed.error ? topic.input : input,
@@ -84,7 +92,7 @@ export function Experiment({
       setStep(0);
       setPlaying(false);
       setError("");
-      setInspect("");
+      setInspection({ step: -1, text: "" });
     } catch (e) {
       setError((e as Error).message);
     }
@@ -94,7 +102,7 @@ export function Experiment({
   const isSearch = topic.id === "binary-search" || topic.id === "linear-search";
   return (
     <>
-      <div className="experiment-grid">
+      <div className="experiment-grid single-screen" ref={stage}>
         <section className="lab-panel" aria-label="交互实验">
           <form
             className="input-toolbar"
@@ -164,75 +172,13 @@ export function Experiment({
               </button>
             )}
           </form>
-          <p className="input-hint">
-            {topic.inputHint}
-            {topic.category === "sorting" && !isSearch && (
-              <button onClick={() => apply("1, 2, 3, 4, 5, 6, 7, 8, 9, 10")}>
-                试试有序输入 <ArrowRight size={12} />
-              </button>
-            )}
-          </p>
-          {(error || computed.error) && (
-            <div className="form-error" role="alert">
-              {error || computed.error}
-            </div>
-          )}
-          <div className="input-context" aria-label="实验数据上下文">
-            <div className="original-input">
-              <strong>初始数据 · {(trace.source || []).length} 项</strong>
-              <div className="data-chips">
-                {(trace.source || []).map((v, i) => (
-                  <span key={i}>{v}</span>
-                ))}
-              </div>
-            </div>
-            {frame.inputState && (
-              <div className="processing-row">
-                {frame.inputState.label && (
-                  <span>{frame.inputState.label}</span>
-                )}
-                <span>
-                  当前处理 <b>{frame.inputState.current ?? "—"}</b>
-                </span>
-                <span>
-                  下一个 <b>{frame.inputState.pending[0] ?? "无"}</b>
-                </span>
-                <span>
-                  待处理 <b>{frame.inputState.pending.join(" → ") || "无"}</b>
-                </span>
-              </div>
-            )}
-            <p>
-              下一步：{trace.frames[position + 1]?.title || "演示结束"}
-              {trace.frames[position + 1]
-                ? " · " + trace.frames[position + 1].detail
-                : ""}
-            </p>
-          </div>
-          <div className="worklist-panel" aria-label="算法工作区">
-            {frame.worklists?.length ? (
-              frame.worklists.map((list) => (
-                <div key={list.name}>
-                  <strong>{list.name}</strong>
-                  <div className="data-chips">
-                    {list.items.length ? (
-                      list.items.map((item, i) => <span key={i}>{item}</span>)
-                    ) : (
-                      <em>空</em>
-                    )}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="muted">
-                {frame.inputState?.label || "状态观察"} ·{" "}
-                {frame.inputState
-                  ? `待处理：${frame.inputState.pending.join(" → ") || "无"}`
-                  : "当前计算状态见下方图解；原始输入保持在上方。"}
-              </p>
-            )}
-          </div>
           <div className="canvas">
+            {(error || computed.error) && (
+              <div className="form-error" role="alert">
+                {error || computed.error}
+              </div>
+            )}
+
             <div className="canvas-top">
               <span>
                 <i /> LIVE EXPERIMENT
@@ -257,53 +203,64 @@ export function Experiment({
                     ? "光影动效开启"
                     : "简洁动效"}
               </button>
-            </div>
-            {frame.nodes && (
-              <div className="diagram-tools">
-                <span>图解缩放 · 可滚动查看</span>
-                <button
-                  type="button"
-                  aria-label="缩小图解"
-                  onClick={() => setZoom((z) => Math.max(1, z - 0.25))}
-                  disabled={zoom <= 1}
-                >
-                  −
-                </button>
-                <button
-                  type="button"
-                  aria-label="适应宽度"
-                  onClick={() => setZoom(1)}
-                >
-                  {Math.round(zoom * 100)}%
-                </button>
-                <button
-                  type="button"
-                  aria-label="放大图解"
-                  onClick={() => setZoom((z) => Math.min(3, z + 0.25))}
-                  disabled={zoom >= 3}
-                >
-                  ＋
-                </button>
-              </div>
-            )}
-            <div
-              className={frame.nodes ? "diagram-viewport" : "diagram-plain"}
-              tabIndex={frame.nodes ? 0 : undefined}
-              aria-label={frame.nodes ? "可滚动图解" : undefined}
-            >
-              <div
-                className={frame.nodes ? "diagram-content" : undefined}
-                style={frame.nodes ? { width: `${zoom * 100}%` } : undefined}
+              <button
+                className="focus-toggle"
+                type="button"
+                aria-label={fullscreen ? "退出专注模式" : "专注模式"}
+                onClick={async () => {
+                  try {
+                    if (document.fullscreenElement)
+                      await document.exitFullscreen();
+                    else await stage.current?.requestFullscreen();
+                  } catch {
+                    setError(
+                      "浏览器暂不支持专注模式；当前实验已自动适应可用空间。",
+                    );
+                  }
+                }}
               >
-                <Diagram
-                  frame={frame}
-                  kind={trace.kind}
-                  onInspect={setInspect}
-                  tick={position}
-                  milliseconds={playing ? speed : 850}
-                  effects={effects}
+                {fullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
+                <span>{fullscreen ? "退出" : "专注"}</span>
+              </button>
+            </div>
+            <div className="canvas-context">
+              {(topic.category === "structures" ||
+                topic.category === "strings") && (
+                <InlineData
+                  label={topic.id === "huffman" ? "原文" : "输入"}
+                  items={
+                    topic.id === "huffman"
+                      ? [computed.error ? topic.input : input]
+                      : trace.source || []
+                  }
+                  className="original-input"
                 />
-              </div>
+              )}
+              {frame.inputState && (
+                <div className="processing-row">
+                  <span>
+                    当前 <b>{frame.inputState.current ?? "—"}</b>
+                  </span>
+                  <span>
+                    下一个 <b>{frame.inputState.pending[0] ?? "无"}</b>
+                  </span>
+                </div>
+              )}
+            </div>
+            <FitDiagram>
+              <Diagram
+                frame={frame}
+                kind={trace.kind}
+                onInspect={(text) => setInspection({ step: position, text })}
+                tick={position}
+                milliseconds={playing ? speed : 850}
+                effects={effects}
+              />
+            </FitDiagram>
+            <div className="worklist-panel" aria-label="算法工作区">
+              {frame.worklists?.length ? (
+                <InlineData key={position} lists={frame.worklists} />
+              ) : null}
             </div>
             <div className="canvas-bottom">
               <span>
@@ -316,10 +273,13 @@ export function Experiment({
                 <i className="purple-dot" /> 正在处理
               </span>
             </div>
-          </div>
-          <div className="inspect" role={inspect ? "status" : undefined}>
-            <Info size={14} />
-            {inspect || "点击图中元素查看详情。"}
+            <div className="inspect" role={inspect ? "status" : undefined}>
+              <Info size={14} />
+              {inspect
+                ? Array.from(inspect).slice(0, 34).join("") +
+                  (Array.from(inspect).length > 34 ? "… · 详见数据" : "")
+                : "点击图中元素查看详情。"}
+            </div>
           </div>
           <div className="playback">
             <button
@@ -400,214 +360,63 @@ export function Experiment({
               </select>
             </label>
           </div>
-          <p className="lab-caption">{trace.caption}</p>
-          <label className="guided-toggle">
-            <input
-              type="checkbox"
-              checked={guided}
-              onChange={(e) => setGuided(e.target.checked)}
-            />{" "}
-            讲解模式：关键节点自动暂停
-          </label>
-          <div className="checkpoint-list" aria-label="关键节点导航">
-            {trace.frames.map((f, i) =>
-              f.checkpoint ? (
-                <button
-                  key={i}
-                  className={i === position ? "active" : ""}
-                  onClick={() => {
-                    setPlaying(false);
-                    setStep(i);
-                  }}
-                >
-                  {i} · {f.title}
-                </button>
-              ) : null,
-            )}
+          <div className="experiment-footer">
+            <label className="guided-toggle">
+              <input
+                type="checkbox"
+                checked={guided}
+                onChange={(e) => setGuided(e.target.checked)}
+              />
+              讲解模式：关键节点自动暂停
+            </label>
+            <select
+              aria-label="关键节点导航"
+              value={frame.checkpoint ? position : ""}
+              onChange={(e) => {
+                setPlaying(false);
+                setStep(+e.target.value);
+              }}
+            >
+              <option value="" disabled>
+                跳到关键节点
+              </option>
+              {trace.frames.map((f, i) =>
+                f.checkpoint ? (
+                  <option key={i} value={i}>
+                    {i} · {f.title}
+                  </option>
+                ) : null,
+              )}
+            </select>
           </div>
         </section>
         <aside className="inspector">
-          <h3>
-            <Info size={17} /> 学习指引
-          </h3>
           <div className="current-step">
             <div className="section-label">
-              当前步骤{" "}
+              {frame.checkpoint ? "关键节点" : "当前步骤"}
               <span>
                 {position} / {trace.frames.length - 1}
               </span>
             </div>
-            <motion.div
+            <motion.h4
               key={position}
-              initial={
-                reduced || !effects
-                  ? false
-                  : { opacity: 0.35, y: 8, filter: "blur(2px)" }
-              }
-              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              transition={{
-                duration:
-                  reduced || !effects ? 0 : Math.min(0.32, speed / 1500),
-                ease: [0.16, 1, 0.3, 1],
-              }}
+              initial={reduced || !effects ? false : { opacity: 0.35, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
             >
-              <h4>{frame.title}</h4>
-              <p aria-live="polite">{frame.detail}</p>
-            </motion.div>
+              {frame.title}
+            </motion.h4>
           </div>
-          {frame.explanation && (
-            <section className="step-explanation" aria-label="关键步骤详解">
-              <h4>{frame.checkpoint ? "关键节点详解" : "读懂这一步"}</h4>
-              <dl>
-                <dt>为什么这样做</dt>
-                <dd>{frame.explanation.why}</dd>
-                <dt>具体改变</dt>
-                <dd>{frame.explanation.changes}</dd>
-                <dt>检查与边界</dt>
-                <dd>{frame.explanation.check}</dd>
-                <dt>先想一想</dt>
-                <dd>{frame.explanation.predict}</dd>
-              </dl>
-            </section>
-          )}
-          <h4 className="small-title">关键不变量</h4>
-          <div className="invariant">{topic.invariant}</div>
-          {Object.keys(frame.stats).length > 0 && (
-            <>
-              <h4 className="small-title">过程统计</h4>
-              <div className="stat-grid">
-                {Object.entries(frame.stats).map(([key, value]) => (
-                  <div key={key}>
-                    <span>{key}</span>
-                    <motion.strong
-                      key={String(value)}
-                      initial={
-                        reduced || !effects ? false : { opacity: 0.4, y: 7 }
-                      }
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: reduced || !effects ? 0 : 0.25 }}
-                    >
-                      {value}
-                    </motion.strong>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-          {frame.tables?.map((table) => (
-            <section
-              className="trace-table"
-              key={table.title}
-              aria-label={table.title}
-            >
-              <h4>{table.title}</h4>
-              <table>
-                <thead>
-                  <tr>
-                    {table.columns.map((c) => (
-                      <th key={c}>{c}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {table.rows.map((row, i) => (
-                    <tr key={i}>
-                      {row.map((cell, j) => (
-                        <td key={j}>{cell}</td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-          ))}
-          <section className="final-output" aria-label="演示输出">
-            <h4>
-              {position === trace.frames.length - 1
-                ? trace.output?.title || "最终计算结果"
-                : "完成后核对结果"}
-            </h4>
-            {position === trace.frames.length - 1 ? (
-              trace.output ? (
-                <>
-                  {trace.output.columns && (
-                    <table>
-                      <thead>
-                        <tr>
-                          {trace.output.columns.map((c) => (
-                            <th key={c}>{c}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {trace.output.rows?.map((r, i) => (
-                          <tr key={i}>
-                            {r.map((c, j) => (
-                              <td key={j}>{c}</td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                  {trace.output.summary.map((line, i) => (
-                    <p key={i}>{line}</p>
-                  ))}
-                </>
-              ) : (
-                <pre>
-                  {JSON.stringify(
-                    trace.result,
-                    (_key, value) =>
-                      typeof value === "number" && !Number.isFinite(value)
-                        ? String(value)
-                        : value,
-                    2,
-                  )}
-                </pre>
-              )
-            ) : (
-              <p>继续单步或拖动进度到末尾，查看最终输出。输入会始终保留。</p>
-            )}
-          </section>
-          <details className="result">
-            <summary>查看本次计算结果</summary>
-            <pre>{JSON.stringify(trace.result, null, 2)}</pre>
-          </details>
+          <ExperimentNotes
+            key={`${position}-${inspect}`}
+            topic={topic}
+            trace={trace}
+            frame={frame}
+            finished={position === trace.frames.length - 1}
+            inspect={inspect}
+          />
         </aside>
       </div>
-      <section className="insight-strip">
-        <div>
-          <span className="vertical-accent" />
-          <h3>
-            {topic.id === "quick"
-              ? "把大问题，拆成小问题。"
-              : "先看懂变化，再理解规则。"}
-          </h3>
-          <p>{topic.analogy}</p>
-        </div>
-        <div className="method-step">
-          <b>1</b>
-          <section>
-            <strong>观察状态</strong>
-            <p>点击图中元素，查看它的值与位置。</p>
-          </section>
-        </div>
-        <div className="method-step">
-          <b>2</b>
-          <section>
-            <strong>追踪变化</strong>
-            <p>单步前进，说明这一步为什么成立。</p>
-          </section>
-        </div>
-        <div className="method-step">
-          <b>3</b>
-          <section>
-            <strong>检验边界</strong>
-            <p>改变输入或场景，观察规则是否仍然成立。</p>
-          </section>
-        </div>
-      </section>
     </>
   );
 }

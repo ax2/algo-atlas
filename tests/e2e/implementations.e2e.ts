@@ -30,12 +30,15 @@ test("continuous lesson keeps all sections and their state while animation chang
     });
     expect(Math.abs((await top()) - baseline)).toBeLessThan(1);
   }
-  await expect(page.getByRole("region", { name: "演示输出" })).toContainText(
-    "编码位串",
-  );
-  await expect(page.getByRole("region", { name: "演示输出" })).toContainText(
-    "往返校验：一致",
-  );
+  let result = "";
+  while (true) {
+    result += await page.getByRole("region", { name: "演示输出" }).innerText();
+    const next = page.getByRole("button", { name: "讲解下一页", exact: true });
+    if (!(await next.count()) || (await next.isDisabled())) break;
+    await next.click();
+  }
+  expect(result).toContain("编码位串");
+  expect(result).toContain("往返校验：一致");
   await expect(page.locator(".trace-table tbody tr")).not.toHaveCount(0);
   await expect(page.getByRole("combobox", { name: "实现语言" })).toHaveValue(
     "python",
@@ -100,16 +103,14 @@ test("graph queues remain explicit and graph-to-matrix frames do not move readin
     await page.goto("/#/lesson/" + id);
     const slider = page.getByRole("slider", { name: "演示进度" }),
       max = +(await slider.getAttribute("max"))!;
-    const original = await page.locator(".original-input").innerText();
+    await expect(page.locator(".original-input")).toHaveCount(0);
     const baseline = await page
       .locator("#section-principles")
       .evaluate((el) => el.getBoundingClientRect().top + scrollY);
     for (const step of [1, Math.floor(max / 2), max]) {
       await slider.fill(String(step));
       await expect(page.getByLabel("算法工作区")).toContainText(/队列|栈|候选/);
-      await expect(page.locator(".original-input")).toHaveText(original, {
-        useInnerText: true,
-      });
+
       const top = await page
         .locator("#section-principles")
         .evaluate((el) => el.getBoundingClientRect().top + scrollY);
