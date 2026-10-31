@@ -25,7 +25,9 @@ async function bounded(page: Page) {
             (e.scrollHeight > e.clientHeight + 2 ||
               e.scrollWidth > e.clientWidth + 2)
           )
-            errors.push(e.className);
+            errors.push(
+              `${e.tagName}.${e.className}: ${e.textContent?.slice(0, 48)} (${e.scrollWidth}/${e.clientWidth}, ${e.scrollHeight}/${e.clientHeight})`,
+            );
         return errors;
       }),
     )
@@ -257,6 +259,10 @@ test("Transformer and Q calculations keep formulas addressable and bounded, incl
   await expect(page.locator(".micro-cell")).toHaveCount(4);
   await capture(page, "q-update");
   const original = page.viewportSize()!;
+  // Exercise a wider monospace face as well as the host's default UI font.
+  await page.addStyleTag({
+    content: ".micro-cell > strong { font-family: 'Courier New', monospace; }",
+  });
   await page.setViewportSize(
     original.width > 760
       ? { width: 1366, height: 600 }
