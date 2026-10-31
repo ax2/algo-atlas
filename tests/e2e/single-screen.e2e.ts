@@ -107,7 +107,12 @@ test("single screen stage fits controls, paged explanations and complete output 
     await page
       .getByRole("button", { name: "退出专注模式", exact: true })
       .click();
-    expect(await page.evaluate(() => !!document.fullscreenElement)).toBe(false);
+    await expect
+      .poll(() => page.evaluate(() => !!document.fullscreenElement))
+      .toBe(false);
+    await expect(
+      page.getByRole("button", { name: "专注模式", exact: true }),
+    ).toBeVisible();
   }
   expect(errors).toEqual([]);
 });
