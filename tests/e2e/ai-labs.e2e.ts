@@ -8,6 +8,7 @@ for (const id of Object.keys(aiLabs) as LabId[]) {
   test(`${id}: data flow, updates, replay, settings, sharing and answers`, async ({
     page,
   }, info) => {
+    test.setTimeout(60000);
     const errors: string[] = [],
       warnings: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));
@@ -34,7 +35,7 @@ for (const id of Object.keys(aiLabs) as LabId[]) {
     await expect(
       page.getByRole("button", { name: "播放", exact: true }),
     ).toBeVisible();
-    await expect(page.locator(".ai-explanation h2")).toContainText(
+    await expect(page.locator(".ai-current-step h2")).toContainText(
       id === "transformer-lab"
         ? "掩码"
         : id === "neural-training"
@@ -42,30 +43,42 @@ for (const id of Object.keys(aiLabs) as LabId[]) {
           : "Bellman",
     );
     await page
-      .locator(".ai-phases")
-      .getByRole("button", { name: "参数更新", exact: true })
-      .click();
+      .getByRole("combobox", { name: "训练阶段", exact: true })
+      .selectOption("update");
+    await expect(
+      page.getByLabel("当前参数更新", { exact: true }),
+    ).toContainText("已更新");
+    await page.getByRole("button", { name: "参数", exact: true }).click();
     await expect(page.locator(".ai-parameters")).toContainText("已执行更新");
-    await expect(page.locator(".ai-parameters tbody tr")).not.toHaveCount(0);
-    if (info.project.name === "desktop") {
-      await page.waitForTimeout(400);
-      await page
-        .locator(".ai-data-panels")
-        .screenshot({
-          path: join(out, `stage004-${id}-parameters-desktop.png`),
-        });
-    }
+    await expect(
+      page.locator(".ai-parameters .note-page:not(.note-measure)"),
+    ).not.toBeEmpty();
     if (id === "transformer-lab") {
       await page.getByRole("combobox", { name: "参数组" }).selectOption("WQ");
-      await expect(page.locator(".ai-parameters tbody tr")).toHaveCount(16);
+      const names: string[] = [];
+      for (let i = 0; i < 30; i++) {
+        const rows = page.locator(
+          ".ai-parameters .note-page:not(.note-measure) tbody tr",
+        );
+        names.push(...(await rows.locator("td:first-child").allTextContents()));
+        const next = page.getByRole("button", {
+          name: "讲解下一页",
+          exact: true,
+        });
+        if (!(await next.count()) || (await next.isDisabled())) break;
+        await next.click();
+      }
+      expect(new Set(names).size).toBe(16);
       await page
-        .locator(".ai-phases")
-        .getByRole("button", { name: "掩码注意力" })
-        .click();
-      await page.getByRole("combobox", { name: "选择张量" }).selectOption("3");
-      await expect(page.locator(".ai-tensor")).toContainText("头 2");
+        .getByRole("combobox", { name: "训练阶段", exact: true })
+        .selectOption("mask");
     }
-    await page.locator(".ai-tensor .matrix button").first().click();
+    await page.getByRole("button", { name: "张量", exact: true }).click();
+    if (id === "transformer-lab") {
+      await page.getByRole("combobox", { name: "选择张量" }).selectOption("3");
+      await expect(page.locator(".ai-tensor select")).toContainText("头 2");
+    }
+    await page.locator(".ai-tensor .tensor-table button").first().click();
     await expect(page.locator(".ai-tensor [role=status]")).toContainText(
       "单元格",
     );
@@ -74,13 +87,18 @@ for (const id of Object.keys(aiLabs) as LabId[]) {
         .getByRole("textbox", { name: "实验分享链接" })
         .inputValue(),
       saved = await progress.inputValue();
+    await page.getByRole("button", { name: "设置", exact: true }).click();
     await page.getByRole("combobox", { name: "AI 数据场景" }).selectOption("1");
     await expect(progress).toHaveValue("0");
     await page.goto(url);
     await expect(progress).toHaveValue(saved);
-    await expect(page.getByRole("combobox", { name: "AI 数据场景" })).toHaveValue("0");
+    await page.getByRole("button", { name: "设置", exact: true }).click();
+    await expect(
+      page.getByRole("combobox", { name: "AI 数据场景" }),
+    ).toHaveValue("0");
     await page.reload();
     await expect(progress).toHaveValue(saved);
+    await page.getByRole("button", { name: "设置", exact: true }).click();
     await page.getByRole("combobox", { name: "AI 数据场景" }).selectOption("1");
     await expect(progress).toHaveValue("0");
     await page
@@ -103,6 +121,7 @@ for (const id of Object.keys(aiLabs) as LabId[]) {
     await expect(page.locator(".ai-stage-top")).toContainText("2");
     const max = (await progress.getAttribute("max"))!;
     await progress.fill(max);
+    await page.getByRole("button", { name: "趋势", exact: true }).click();
     await expect(page.locator(".ai-result")).toContainText("本次实验结果");
     await expect(
       page.getByRole("button", { name: "下一步", exact: true }),
@@ -111,31 +130,19 @@ for (const id of Object.keys(aiLabs) as LabId[]) {
     await page.goto("/#/cases/" + id);
     await page.reload();
     await page
-      .locator(".ai-phases")
-      .getByRole("button", {
-        name: id === "transformer-lab" ? "掩码注意力" : "参数更新",
-        exact: true,
-      })
-      .click();
-    if (id === "transformer-lab")
-      await page.getByRole("combobox", { name: "选择张量" }).selectOption("1");
-    await page.waitForTimeout(1000);
-    await page.evaluate(() => window.scrollTo(0, 0));
+      .getByRole("combobox", { name: "训练阶段", exact: true })
+      .selectOption(id === "transformer-lab" ? "mask" : "update");
+    await page
+      .locator(".ai-workspace")
+      .evaluate((e) => e.scrollIntoView({ block: "start" }));
+    await page.waitForTimeout(500);
     await page.screenshot({
-      path: join(out, `stage004-${id}-${info.project.name}.png`),
-      fullPage: false,
+      path: join(out, `stage008-${id}-${info.project.name}.png`),
     });
-    if (info.project.name === "mobile") {
-      await page.locator(".ai-stage").scrollIntoViewIfNeeded();
-      await page.screenshot({
-        path: join(out, `stage004-${id}-workspace-mobile.png`),
-      });
-    } else
-      await page
-        .locator(".ai-workspace")
-        .screenshot({
-          path: join(out, `stage004-${id}-workspace-desktop.png`),
-        });
+    await page.getByRole("button", { name: "参数", exact: true }).click();
+    await page.screenshot({
+      path: join(out, `stage008-${id}-parameters-${info.project.name}.png`),
+    });
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth + 1,

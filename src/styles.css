@@ -3529,8 +3529,7 @@ main {
     radial-gradient(ellipse at 50% 0, #5de0bd08, transparent 60%),
     var(--surface);
 }
-.ai-stage-top,
-.ai-section-head {
+.ai-stage-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -3538,56 +3537,6 @@ main {
 }
 .ai-stage-top .text-button {
   font-size: 11px;
-}
-.ai-phases {
-  display: flex;
-  gap: 5px;
-  overflow-x: auto;
-  padding: 18px 0 12px;
-  scrollbar-width: thin;
-}
-.ai-phases button {
-  white-space: nowrap;
-  background: var(--surface-raised);
-  border: 1px solid var(--border);
-  color: var(--muted);
-  font-size: 11px;
-  padding: 9px 10px;
-  border-radius: 6px;
-}
-.ai-phases button[aria-current="step"] {
-  color: var(--mint);
-  border-color: var(--mint);
-  box-shadow: 0 0 20px #5de0bd12;
-}
-.ai-flow-label {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  font-size: 10px;
-  color: var(--muted);
-}
-.ai-flow-label button {
-  font-size: 10px;
-  white-space: nowrap;
-}
-.ai-flow-scroll {
-  overflow: auto;
-  scrollbar-width: thin;
-}
-.ai-flow {
-  min-width: 560px;
-}
-.ai-flow.fit {
-  min-width: 0;
-}
-.ai-flow .graph-svg {
-  width: 100%;
-  max-height: none;
-  min-height: 0;
-  height: auto;
-  display: block;
 }
 .ai-transport {
   display: flex;
@@ -3693,40 +3642,6 @@ main {
   color: var(--muted);
   margin: 0;
 }
-.ai-data-panels {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 18px;
-  margin-top: 18px;
-  align-items: start;
-}
-.ai-section-head h3 {
-  font-size: 15px;
-  white-space: nowrap;
-  margin: 0;
-}
-.ai-section-head select {
-  font-size: 11px;
-  max-width: 65%;
-}
-.ai-data-panels .muted {
-  font-size: 11px;
-  line-height: 1.8;
-  min-height: 38px;
-}
-.ai-matrix-scroll {
-  max-height: 360px;
-  overflow: auto;
-  scrollbar-width: thin;
-}
-.ai-matrix-scroll .matrix {
-  min-width: max-content;
-}
-.ai-param-scroll {
-  overflow: auto;
-  max-height: 360px;
-  scrollbar-width: thin;
-}
 .ai-parameters table {
   border-collapse: collapse;
   width: 100%;
@@ -3757,12 +3672,6 @@ main {
 }
 .ai-parameters td span {
   display: inline-block;
-}
-.ai-positive {
-  color: var(--orange);
-}
-.ai-negative {
-  color: var(--blue);
 }
 .ai-result {
   padding: 24px;
@@ -3954,7 +3863,6 @@ main {
     min-width: 0;
   }
   .ai-workspace,
-  .ai-data-panels,
   .ai-concepts,
   .ai-exercises > div {
     grid-template-columns: minmax(0, 1fr);
@@ -3998,12 +3906,6 @@ main {
   }
   .ai-stage-top .eyebrow {
     font-size: 10px;
-  }
-  .ai-section-head {
-    flex-wrap: wrap;
-  }
-  .ai-section-head select {
-    max-width: 100%;
   }
 }
 /* Stage 005: continuous reading with bounded, independent animation surfaces. */
@@ -4839,5 +4741,614 @@ main {
   }
   #section-experiment .note-block p {
     line-height: 1.65;
+  }
+}
+/* Stage 008: one bounded workspace for every integrated case. */
+.case-enter {
+  margin-bottom: 14px;
+}
+#section-experiment.case-experiment .single-screen {
+  height: calc(100svh - 88px);
+  grid-template-columns: minmax(0, 1fr) minmax(310px, 32%);
+  scroll-margin-top: 72px;
+  margin-bottom: 32px;
+}
+#section-experiment.case-experiment .single-screen:fullscreen {
+  height: 100dvh;
+  margin: 0;
+  padding: 12px;
+}
+#section-experiment .ai-stage,
+#section-experiment .ai-inspector {
+  min-width: 0;
+  min-height: 0;
+  padding: 12px;
+  height: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+#section-experiment .ai-stage-top {
+  margin: 0;
+  flex-shrink: 0;
+  gap: 8px;
+}
+#section-experiment .ai-stage-top .eyebrow {
+  margin-right: auto;
+}
+#section-experiment .ai-stage-top button {
+  font-size: 11px;
+}
+#section-experiment .ai-phase-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  flex-shrink: 0;
+  color: var(--muted);
+}
+#section-experiment .ai-phase-row select {
+  max-width: 48%;
+}
+#section-experiment .ai-diagram-area {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: radial-gradient(ellipse at center, #58e9b408, transparent 70%);
+}
+#section-experiment .ai-source {
+  padding: 0;
+  margin: 0;
+  border: 0;
+  flex-wrap: nowrap;
+}
+#section-experiment .ai-source span {
+  background: none;
+  padding: 0;
+  border: 0;
+}
+#section-experiment .ai-update-focus {
+  flex-shrink: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  font-size: 11px;
+}
+#section-experiment .ai-update-focus > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#section-experiment .ai-update-focus > div:first-child {
+  margin-bottom: 5px;
+}
+#section-experiment .ai-update-focus select {
+  flex: 1;
+  min-width: 0;
+  max-width: 200px;
+  height: 24px;
+  padding: 1px 5px;
+}
+#section-experiment .ai-update-focus > span {
+  margin-left: 8px;
+  color: var(--muted);
+}
+#section-experiment .ai-update-focus.is-updated {
+  border-color: var(--mint);
+  box-shadow: inset 0 0 22px #64eab40b;
+}
+#section-experiment .ai-update-equation {
+  justify-content: space-between;
+  font-family: ui-monospace, monospace;
+  font-size: clamp(11px, 1.15vw, 17px);
+  font-variant-numeric: tabular-nums;
+}
+#section-experiment .ai-update-equation strong {
+  color: var(--mint);
+}
+#section-experiment .ai-bottom-controls {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 8px;
+  align-items: center;
+}
+#section-experiment .ai-transport {
+  margin: 0;
+  gap: 6px;
+  grid-column: 1/-1;
+  flex-wrap: nowrap;
+}
+#section-experiment .ai-transport > button {
+  height: 32px;
+  padding: 5px 9px;
+}
+#section-experiment .ai-transport > select {
+  margin-left: auto;
+  height: 32px;
+}
+#section-experiment .ai-timeline {
+  grid-column: 1/-1;
+  width: 100%;
+  margin: 0;
+  height: 14px;
+}
+#section-experiment .ai-play-options {
+  font-size: 10px;
+  gap: 8px;
+  margin: 0;
+}
+#section-experiment .ai-play-options label {
+  gap: 4px;
+}
+#section-experiment .ai-play-options select {
+  height: 24px;
+  padding: 0 5px;
+}
+#section-experiment .ai-guided {
+  margin: 0;
+  font-size: 10px;
+  white-space: nowrap;
+  gap: 3px;
+}
+#section-experiment .ai-current-step {
+  flex-shrink: 0;
+}
+#section-experiment .ai-current-step > span {
+  color: var(--mint);
+  font:
+    10px ui-monospace,
+    monospace;
+}
+#section-experiment .ai-current-step h2 {
+  font-size: 16px;
+  line-height: 1.4;
+  margin: 5px 0 0;
+}
+#section-experiment .ai-inspector .experiment-note-tabs {
+  grid-template-columns: repeat(5, 1fr);
+}
+#section-experiment .ai-explanation {
+  display: flex;
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: 0;
+}
+#section-experiment .ai-parameters,
+#section-experiment .ai-tensor,
+#section-experiment .ai-trends,
+#section-experiment .ai-settings-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+#section-experiment .ai-parameters table {
+  table-layout: fixed;
+  width: 100%;
+  white-space: normal;
+}
+#section-experiment .ai-parameters th {
+  position: static;
+}
+#section-experiment .ai-parameters td {
+  font-size: 11px;
+}
+#section-experiment .ai-result {
+  margin: 0;
+}
+#section-experiment .ai-curve {
+  margin: 0;
+  border: 0;
+  padding: 0;
+  flex-shrink: 0;
+}
+#section-experiment .ai-curve svg {
+  width: 100%;
+  height: 80px;
+  display: block;
+}
+#section-experiment .ai-curve > div {
+  font-size: 10px;
+}
+#section-experiment .ai-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 0;
+  border: 0;
+  margin: 0;
+  gap: 8px;
+  background: none;
+}
+#section-experiment .ai-controls label {
+  min-width: 0;
+  font-size: 11px;
+  gap: 3px;
+}
+#section-experiment .ai-controls label:first-child {
+  grid-column: 1/-1;
+}
+#section-experiment .ai-controls p {
+  grid-column: 1/-1;
+  margin: 0;
+  font-size: 11px;
+}
+#section-experiment .ai-share {
+  margin: 0;
+  font-size: 10px;
+}
+#section-experiment .ai-share input {
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+}
+#section-experiment .ai-tensor > select,
+#section-experiment .ai-parameters > select {
+  flex-shrink: 0;
+  width: 100%;
+}
+#section-experiment .tensor-window {
+  flex: 1;
+  min-height: 0;
+}
+#section-experiment .tensor-table {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: collapse;
+  font:
+    11px ui-monospace,
+    monospace;
+}
+#section-experiment .tensor-table th,
+#section-experiment .tensor-table td {
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--border);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+#section-experiment .tensor-table th:first-child {
+  width: 34px;
+  color: var(--muted);
+}
+#section-experiment .tensor-table button {
+  width: 100%;
+  height: 32px;
+  padding: 0;
+  color: var(--mint);
+  font: inherit;
+}
+#section-experiment .tensor-table button:hover,
+#section-experiment .tensor-table button:focus-visible {
+  background: var(--surface-raised);
+}
+#section-experiment .tensor-navigation {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  height: 24px;
+  flex-shrink: 0;
+}
+#section-experiment .tensor-navigation button {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0;
+}
+#section-experiment .tensor-navigation button:disabled {
+  opacity: 0.25;
+}
+#section-experiment .tensor-inspect {
+  font:
+    10px/1.4 ui-monospace,
+    monospace;
+  overflow-wrap: anywhere;
+  margin: 0;
+  min-height: 28px;
+  flex-shrink: 0;
+}
+#section-experiment.case-experiment select {
+  min-width: 0;
+  font-size: 11px;
+  padding: 5px;
+  max-width: 100%;
+}
+@media (max-width: 760px) {
+  #section-experiment.case-experiment .single-screen,
+  #section-experiment.case-experiment .single-screen:fullscreen {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) 192px;
+    gap: 8px;
+  }
+  #section-experiment .ai-stage,
+  #section-experiment .ai-inspector {
+    padding: 8px;
+    gap: 5px;
+  }
+  #section-experiment .ai-current-step {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  #section-experiment .ai-current-step > span {
+    display: none;
+  }
+  #section-experiment .ai-current-step h2 {
+    font-size: 12px;
+    margin: 0;
+  }
+  #section-experiment .ai-phase-row {
+    font-size: 10px;
+  }
+  #section-experiment .ai-phase-row select {
+    padding: 2px;
+    height: 26px;
+  }
+  #section-experiment .ai-stage-top .eyebrow {
+    font-size: 9px;
+  }
+  #section-experiment .ai-stage-top button {
+    font-size: 10px;
+    padding: 0;
+  }
+  #section-experiment .ai-update-focus {
+    padding: 4px 6px;
+    font-size: 10px;
+  }
+  #section-experiment .ai-update-focus > div:first-child {
+    margin-bottom: 2px;
+    gap: 5px;
+  }
+  #section-experiment .ai-update-focus select {
+    height: 20px;
+    max-width: 145px;
+    padding: 0 2px;
+  }
+  #section-experiment .ai-update-equation {
+    font-size: 11px;
+  }
+  #section-experiment .ai-transport > button,
+  #section-experiment .ai-transport > select {
+    height: 28px;
+  }
+  #section-experiment .ai-controls {
+    gap: 4px 8px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  #section-experiment .ai-controls label:first-child {
+    grid-column: span 2;
+  }
+  #section-experiment .ai-controls p {
+    display: none;
+  }
+  #section-experiment .ai-controls label {
+    font-size: 10px;
+  }
+  #section-experiment .ai-controls select {
+    height: 26px;
+    padding: 2px;
+  }
+  #section-experiment .ai-curve svg {
+    height: 42px;
+  }
+  #section-experiment .ai-trends {
+    gap: 3px;
+  }
+  #section-experiment .tensor-inspect {
+    min-height: 14px;
+  }
+}
+@media (max-height: 620px) and (min-width: 761px) {
+  #section-experiment.case-experiment .single-screen {
+    height: calc(100svh - 80px);
+  }
+  #section-experiment .ai-current-step h2 {
+    font-size: 13px;
+  }
+  #section-experiment .ai-controls {
+    gap: 4px;
+  }
+  #section-experiment .ai-controls p {
+    display: none;
+  }
+}
+
+#section-experiment .ai-transport {
+  padding: 0;
+  border: 0;
+}
+#section-experiment.classic-case .single-screen {
+  display: grid;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+#section-experiment .case-comparison {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  gap: 16px;
+}
+#section-experiment .case-comparison .sandbox-toolbar {
+  margin: 0;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+#section-experiment .sandbox-toolbar h2 {
+  font-size: 17px;
+  margin: 0;
+}
+#section-experiment .sandbox-toolbar > div {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+#section-experiment .sandbox-toolbar form {
+  display: flex;
+  gap: 5px;
+  min-width: 0;
+}
+#section-experiment .sandbox-toolbar input {
+  min-width: 0;
+  width: 160px;
+}
+#section-experiment .case-pipeline {
+  margin: auto 0 0;
+  padding: 0;
+  gap: 8px;
+}
+#section-experiment .case-pipeline > div {
+  padding: 12px 6px;
+  font-size: 12px;
+  min-width: 0;
+  gap: 5px;
+  flex: 1;
+}
+#section-experiment .case-pipeline svg {
+  flex-shrink: 0;
+  width: 15px;
+}
+#section-experiment .case-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 0 auto;
+  width: 100%;
+}
+#section-experiment .case-metrics > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 18px;
+  min-width: 0;
+}
+#section-experiment .case-metrics strong {
+  font-size: clamp(18px, 2vw, 30px);
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+#section-experiment .case-process-title {
+  font-size: 16px;
+  margin: 0;
+}
+#section-experiment .case-comparison .form-error {
+  position: static;
+  flex-shrink: 0;
+}
+@media (max-width: 760px) {
+  #section-experiment .case-comparison {
+    padding: 8px;
+    gap: 8px;
+  }
+  #section-experiment .sandbox-toolbar h2 {
+    font-size: 13px;
+  }
+  #section-experiment .case-pipeline > div {
+    padding: 6px 4px;
+    font-size: 10px;
+    flex-direction: column;
+  }
+  #section-experiment .case-pipeline svg {
+    display: none;
+  }
+  #section-experiment .case-pipeline b {
+    font-size: 12px;
+  }
+  #section-experiment .case-metrics {
+    gap: 5px;
+  }
+  #section-experiment .case-metrics > div {
+    padding: 8px;
+  }
+  #section-experiment .case-metrics strong {
+    font-size: 15px;
+  }
+  #section-experiment .case-metrics span {
+    font-size: 11px;
+  }
+  #section-experiment .case-process-title {
+    font-size: 12px;
+  }
+}
+
+#section-experiment .tensor-table th,
+#section-experiment .tensor-table td {
+  height: 28px;
+}
+#section-experiment .tensor-table button {
+  height: 26px;
+}
+#section-experiment .ai-diagram-area .ai-curve {
+  width: 620px;
+}
+#section-experiment .ai-diagram-area .ai-curve svg {
+  height: 118px;
+}
+#section-experiment .ai-diagram-area .ai-curve > div {
+  font-size: 14px;
+}
+@media (max-width: 760px) {
+  #section-experiment .ai-current-step {
+    display: none;
+  }
+  #section-experiment .ai-tensor {
+    gap: 3px;
+  }
+  #section-experiment .ai-tensor > select,
+  #section-experiment .ai-parameters > select {
+    height: 26px;
+    padding: 2px;
+  }
+}
+
+#section-experiment .ai-parameters thead {
+  position: static;
+}
+#section-experiment .case-pipeline {
+  flex-direction: row;
+}
+
+@media (max-width: 760px) {
+  #section-experiment .ai-stage {
+    position: relative;
+  }
+  #section-experiment .ai-stage-top {
+    position: absolute;
+    top: 11px;
+    right: 8px;
+  }
+  #section-experiment .ai-stage-top .eyebrow {
+    display: none;
+  }
+  #section-experiment .ai-phase-row {
+    padding-right: 112px;
+  }
+  #section-experiment .ai-phase-row select {
+    max-width: 100%;
+  }
+  #section-experiment .ai-phase-row > span {
+    display: none;
+  }
+  #section-experiment.case-experiment .single-screen[data-panel="讲解"] {
+    grid-template-rows: minmax(0, 1fr) 168px;
   }
 }

@@ -15,6 +15,7 @@ import { topicById } from "../content/catalog";
 import { runTrace } from "../engine";
 import { graphScenario } from "../engine/graphs";
 import { navigate } from "../services/routing";
+import { AdaptiveNotes } from "./AdaptiveNotes";
 import { AILab } from "./AILab";
 import { aiLabs } from "../content/ai-labs";
 import type { LabId } from "../engine/ai-labs";
@@ -282,86 +283,97 @@ export function Cases({ id }: { id: string }) {
           <p>{selected.description}</p>
         </div>
       </header>
-      <div className="case-pipeline">
-        {selected.steps.map((s, i) => (
-          <div key={s}>
-            <b>0{i + 1}</b>
-            <span>{s}</span>
-            {i < 2 && <ArrowRight size={20} />}
-          </div>
-        ))}
-      </div>
-      <section className="case-sandbox">
-        <div className="sandbox-toolbar">
-          <h2>改变约束，比较结果</h2>
-          <div>
-            {selected.id === "diff" ? (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  try {
-                    evaluate("diff", 0, 3, pair);
-                    setInput(pair);
-                    setError("");
-                  } catch (err) {
-                    setError((err as Error).message);
-                  }
-                }}
-              >
-                <input
-                  aria-label="比较的字符串"
-                  value={pair}
-                  onChange={(e) => setPair(e.target.value)}
-                />
-                <button className="button compact">比较</button>
-              </form>
-            ) : (
-              <select
-                aria-label="专题场景"
-                value={scenario}
-                onChange={(e) => setScenario(+e.target.value)}
-              >
-                <option value="0">场景 A · 基准条件</option>
-                <option value="1">场景 B · 改变输入</option>
-              </select>
-            )}
-            {selected.id === "cache" && (
-              <label>
-                缓存容量{" "}
-                <select
-                  aria-label="缓存容量"
-                  value={capacity}
-                  onChange={(e) => setCapacity(+e.target.value)}
-                >
-                  {[1, 2, 3, 4, 5].map((v) => (
-                    <option key={v}>{v}</option>
-                  ))}
-                </select>
-              </label>
-            )}
-          </div>
-        </div>
-        {error && (
-          <p role="alert" className="form-error">
-            {error}
-          </p>
-        )}
-        <div className="case-metrics">
-          {outcome.metrics.map(([k, v]) => (
-            <div key={k}>
-              <span>{k}</span>
-              <strong>{v}</strong>
+      <section id="section-experiment" className="case-experiment classic-case">
+        <div className="case-sandbox single-screen">
+          <section className="case-comparison">
+            <div className="sandbox-toolbar">
+              <h2>改变约束，比较结果</h2>
+              <div>
+                {selected.id === "diff" ? (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      try {
+                        evaluate("diff", 0, 3, pair);
+                        setInput(pair);
+                        setError("");
+                      } catch (err) {
+                        setError((err as Error).message);
+                      }
+                    }}
+                  >
+                    <input
+                      aria-label="比较的字符串"
+                      value={pair}
+                      onChange={(e) => setPair(e.target.value)}
+                    />
+                    <button className="button compact">比较</button>
+                  </form>
+                ) : (
+                  <select
+                    aria-label="专题场景"
+                    value={scenario}
+                    onChange={(e) => setScenario(+e.target.value)}
+                  >
+                    <option value="0">场景 A · 基准条件</option>
+                    <option value="1">场景 B · 改变输入</option>
+                  </select>
+                )}
+                {selected.id === "cache" && (
+                  <label>
+                    缓存容量{" "}
+                    <select
+                      aria-label="缓存容量"
+                      value={capacity}
+                      onChange={(e) => setCapacity(+e.target.value)}
+                    >
+                      {[1, 2, 3, 4, 5].map((v) => (
+                        <option key={v}>{v}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
             </div>
-          ))}
+            {error && (
+              <p role="alert" className="form-error">
+                {error}
+              </p>
+            )}
+            <div className="case-pipeline">
+              {selected.steps.map((s, i) => (
+                <div key={s}>
+                  <b>0{i + 1}</b>
+                  <span>{s}</span>
+                  {i < 2 && <ArrowRight size={20} />}
+                </div>
+              ))}
+            </div>
+            <div className="case-metrics">
+              {outcome.metrics.map(([k, v]) => (
+                <div key={k}>
+                  <span>{k}</span>
+                  <strong>{v}</strong>
+                </div>
+              ))}
+            </div>
+          </section>
+          <aside className="ai-inspector">
+            <h2 className="case-process-title">过程与判断</h2>
+            <AdaptiveNotes
+              key={`${id}-${scenario}-${capacity}-${input}`}
+              className="case-notes"
+              label="专题过程讲解"
+              blocks={[
+                ...outcome.events.map((text, i) => ({
+                  title: `${String(i + 1).padStart(2, "0")} · 过程记录`,
+                  text,
+                })),
+                { title: "工程上的取舍", text: selected.constraint },
+              ]}
+            />
+          </aside>
         </div>
-        <ol className="event-log">
-          {outcome.events.map((e, i) => (
-            <li key={i}>
-              <span>{String(i + 1).padStart(2, "0")}</span>
-              {e}
-            </li>
-          ))}
-        </ol>
       </section>
       <div className="reading-grid">
         <article className="article">
