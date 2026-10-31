@@ -44,7 +44,7 @@ test("all lessons and both scenarios render at beginning, middle and end", async
               );
             })
             .map((child) => child.className);
-          const note = el.querySelector(".note-page")!;
+          const note = el.querySelector(".note-page:not(.note-measure)")!;
           return {
             height: r.height,
             viewport: innerHeight,
@@ -57,6 +57,28 @@ test("all lessons and both scenarios render at beginning, middle and end", async
           geometry.viewport,
         );
         expect(geometry.noteFits, t.id + " clipped note").toBe(true);
+        await expect
+          .poll(
+            () =>
+              page.locator(".fit-viewport").evaluate((el) => {
+                const viewport = el.getBoundingClientRect();
+                return [
+                  ...el.querySelectorAll(
+                    ".node-shell, .node-subtitle, .edge-weight",
+                  ),
+                ].every((node) => {
+                  const r = node.getBoundingClientRect();
+                  return (
+                    r.left >= viewport.left - 2 &&
+                    r.right <= viewport.right + 2 &&
+                    r.top >= viewport.top - 2 &&
+                    r.bottom <= viewport.bottom + 2
+                  );
+                });
+              }),
+            { message: t.id + " graph label cropped" },
+          )
+          .toBe(true);
         expect(
           await page.evaluate(
             () => document.documentElement.scrollWidth <= innerWidth + 1,

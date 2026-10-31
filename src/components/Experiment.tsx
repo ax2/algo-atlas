@@ -249,6 +249,7 @@ export function Experiment({
             </div>
             <FitDiagram>
               <Diagram
+                fitContent
                 frame={frame}
                 kind={trace.kind}
                 onInspect={(text) => setInspection({ step: position, text })}
@@ -258,7 +259,10 @@ export function Experiment({
               />
             </FitDiagram>
             <div className="worklist-panel" aria-label="算法工作区">
-              {frame.worklists?.length ? (
+              {frame.worklists?.length &&
+              !(
+                topic.id === "huffman" && position === trace.frames.length - 1
+              ) ? (
                 <InlineData key={position} lists={frame.worklists} />
               ) : null}
             </div>

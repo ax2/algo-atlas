@@ -175,11 +175,64 @@ function EnergyEdge({
   );
 }
 
+// Include node shells, labels/subtitles and curved-edge labels, with a glow margin.
+// Only lesson canvases opt in; the AI workspaces retain their existing coordinates.
+function contentBounds(nodes: Node[], edges: Edge[]) {
+  if (!nodes.length) return { x: 0, y: 0, width: 220, height: 140 };
+  const points: { x: number; y: number }[] = [];
+  const textWidth = (text: string, size: number) =>
+    Array.from(text).reduce(
+      (w, c) => w + (/[^\x00-\xff]/.test(c) ? size : size * 0.62),
+      0,
+    );
+  const map = new Map(nodes.map((n) => [n.id, n]));
+  for (const n of nodes) {
+    const half = Math.max(
+      nodeWidth(n) / 2,
+      textWidth(n.label, 14) / 2,
+      n.subtitle ? textWidth(n.subtitle, 11) / 2 : 0,
+    );
+    points.push(
+      { x: n.x - half, y: n.y - 28 },
+      { x: n.x + half, y: n.y + (n.subtitle ? 46 : n.kind ? 34 : 28) },
+    );
+  }
+  for (const edge of edges) {
+    const a = map.get(edge.from),
+      b = map.get(edge.to);
+    if (!a || !b) continue;
+    const dx = b.x - a.x,
+      dy = b.y - a.y,
+      length = Math.hypot(dx, dy) || 1;
+    const curved =
+      edge.directed &&
+      edges.some((e) => e.from === edge.to && e.to === edge.from);
+    const x = (a.x + b.x) / 2 + (curved ? (-dy / length) * 32 : 9),
+      y = (a.y + b.y) / 2 + (curved ? (dx / length) * 32 : -9);
+    const half = textWidth(edge.label || "", 12) / 2 + 10;
+    points.push({ x: x - half, y: y - 14 }, { x: x + half, y: y + 14 });
+  }
+  const left = Math.min(...points.map((p) => p.x)) - 18,
+    right = Math.max(...points.map((p) => p.x)) + 18;
+  const top = Math.min(...points.map((p) => p.y)) - 18,
+    bottom = Math.max(...points.map((p) => p.y)) + 18;
+  const width = Math.max(160, right - left),
+    height = Math.max(100, bottom - top);
+  return {
+    x: (left + right - width) / 2,
+    y: (top + bottom - height) / 2,
+    width,
+    height,
+  };
+}
+
 function GraphScene({
   frame,
   options,
   onInspect,
+  fitContent = false,
 }: {
+  fitContent?: boolean;
   frame: Frame;
   options: MotionOptions;
   onInspect?: (s: string) => void;
@@ -188,11 +241,17 @@ function GraphScene({
     map = new Map(nodes.map((n) => [n.id, n]));
   const maxY = Math.max(340, ...nodes.map((n) => n.y + 45)),
     { duration, still, tick, glow } = options;
-  return (
+  const bounds = contentBounds(nodes, frame.edges || []);
+  const box = fitContent
+    ? `${bounds.x} ${bounds.y} ${bounds.width} ${bounds.height}`
+    : `0 0 680 ${maxY}`;
+  const graphic = (
     <motion.svg
       className="graph-svg motion-graph"
-      viewBox={`0 0 680 ${maxY}`}
-      animate={{ viewBox: `0 0 680 ${maxY}` }}
+      viewBox={box}
+      animate={{ viewBox: box }}
+      style={fitContent ? { width: "100%", height: "100%" } : undefined}
+      data-content-fit={fitContent || undefined}
       transition={{ duration, ease: travel }}
       role="img"
       aria-label={frame.title + "：" + frame.detail}
@@ -347,6 +406,16 @@ function GraphScene({
         })}
       </AnimatePresence>
     </motion.svg>
+  );
+  return fitContent ? (
+    <div
+      className="graph-content-bounds"
+      style={{ width: bounds.width, height: bounds.height }}
+    >
+      {graphic}
+    </div>
+  ) : (
+    graphic
   );
 }
 
@@ -601,7 +670,9 @@ export function Diagram({
   tick = 0,
   milliseconds = 850,
   effects = true,
+  fitContent = false,
 }: {
+  fitContent?: boolean;
   frame: Frame;
   kind: Trace["kind"];
   onInspect?: (s: string) => void;
@@ -628,7 +699,14 @@ export function Diagram({
       />
     );
   if (frame.nodes)
-    return <GraphScene frame={frame} options={options} onInspect={onInspect} />;
+    return (
+      <GraphScene
+        frame={frame}
+        options={options}
+        onInspect={onInspect}
+        fitContent={fitContent}
+      />
+    );
   if (kind === "bars")
     return <BarsScene frame={frame} options={options} onInspect={onInspect} />;
   const counts = new Map<number, number>();

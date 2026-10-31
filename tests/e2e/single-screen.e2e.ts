@@ -63,7 +63,7 @@ test("single screen stage fits controls, paged explanations and complete output 
         do {
           expect(
             await page
-              .locator(".note-page")
+              .locator(".note-page:not(.note-measure)")
               .evaluate((el) => el.scrollHeight <= el.clientHeight + 1),
             id + " " + tab + " page " + pages,
           ).toBe(true);
@@ -85,16 +85,13 @@ test("single screen stage fits controls, paged explanations and complete output 
         .getByRole("navigation", { name: "实验讲解" })
         .getByRole("button", { name: /^结果/ })
         .click();
-      await page
-        .getByRole("button", { name: "讲解下一页", exact: true })
-        .click();
       await expect(
         page.getByRole("region", { name: "演示输出" }),
       ).toContainText("编码位串");
       const out = process.env.ATLAS_EVIDENCE_DIR || test.info().outputDir;
       await mkdir(out, { recursive: true });
       await page.screenshot({
-        path: join(out, `stage006-final-${info.project.name}.png`),
+        path: join(out, `stage007-final-${info.project.name}.png`),
       });
     }
   }

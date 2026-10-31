@@ -39,7 +39,8 @@ test("continuous lesson keeps all sections and their state while animation chang
   }
   expect(result).toContain("编码位串");
   expect(result).toContain("往返校验：一致");
-  await expect(page.locator(".trace-table tbody tr")).not.toHaveCount(0);
+  expect(result).toContain("结果明细");
+  expect(result).toContain("101");
   await expect(page.getByRole("combobox", { name: "实现语言" })).toHaveValue(
     "python",
   );

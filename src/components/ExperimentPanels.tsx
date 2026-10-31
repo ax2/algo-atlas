@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Frame, Trace } from "../engine/model";
 import type { Topic } from "../content/types";
+import { AdaptiveNotes, type NoteBlock } from "./AdaptiveNotes";
 
 // Break long prose/bit strings into complete, reachable pages rather than clipping.
 function chunks(text: string, size = 80): string[] {
@@ -117,7 +118,7 @@ export function FitDiagram({ children }: { children: ReactNode }) {
       const next = Math.min(
         box.clientWidth / scene.offsetWidth,
         box.clientHeight / scene.offsetHeight,
-        1.5,
+        2.5,
       );
       if (Number.isFinite(next) && next >= 0)
         setScale((old) => (Math.abs(old - next) > 0.001 ? next : old));
@@ -141,43 +142,12 @@ export function FitDiagram({ children }: { children: ReactNode }) {
   );
 }
 
-type NotePage = {
-  title: string;
-  text?: string;
-  columns?: string[];
-  rows?: (string | number)[][];
-};
-function prose(title: string, text: string, size = 80): NotePage[] {
-  return chunks(text, size).map((text, i, all) => ({
-    title: title + (all.length > 1 ? ` · ${i + 1}/${all.length}` : ""),
-    text: text.trim(),
-  }));
-}
-function tablePages(
+const detail = (title: string, text: string): NoteBlock[] => [{ title, text }];
+const tableBlocks = (
   title: string,
   columns: string[],
   rows: (string | number)[][],
-  compact = false,
-): NotePage[] {
-  // Short viewports show one table row per page; long cells become prose.
-  if (
-    columns.length > 4 ||
-    rows.some((row) => row.some((c) => String(c).length > 18))
-  )
-    return rows.flatMap((row, i) =>
-      prose(
-        `${title} · ${i + 1}`,
-        row.map((c, j) => `${columns[j]}：${c}`).join("；"),
-        compact ? 40 : 80,
-      ),
-    );
-  const size = compact ? 1 : 2;
-  return Array.from({ length: Math.ceil(rows.length / size) }, (_, i) => ({
-    title,
-    columns,
-    rows: rows.slice(i * size, i * size + size),
-  }));
-}
+): NoteBlock[] => (rows.length ? [{ title, columns, rows }] : []);
 export function ExperimentNotes({
   topic,
   trace,
@@ -191,27 +161,22 @@ export function ExperimentNotes({
   finished: boolean;
   inspect: string;
 }) {
-  const [compact, setCompact] = useState(
-    () =>
-      window.matchMedia("(max-width: 760px) and (max-height: 740px)").matches,
-  );
-  useLayoutEffect(() => {
-    const query = window.matchMedia(
-      "(max-width: 760px) and (max-height: 740px)",
-    );
-    const sync = () => setCompact(query.matches);
-    query.addEventListener("change", sync);
-    return () => query.removeEventListener("change", sync);
-  }, []);
-  const detail = (title: string, text: string) =>
-    prose(title, text, compact ? 40 : 80);
   const [tab, setTab] = useState(
-      inspect ? "data" : finished ? "result" : "step",
-    ),
-    [page, setPage] = useState(0);
+    inspect ? "data" : finished ? "result" : "step",
+  );
+  const [visit, setVisit] = useState(0);
   const e = frame.explanation;
-  const sections: Record<string, NotePage[]> = {
-    step: detail("发生了什么", frame.detail),
+  const sections: Record<string, NoteBlock[]> = {
+    step: [
+      ...detail("发生了什么", frame.detail),
+      ...(e
+        ? [
+            ...detail("为什么这样做", e.why),
+            ...detail("检查与边界", e.check),
+            ...detail("接下来想一想", e.predict),
+          ]
+        : []),
+    ],
     why: e
       ? [
           ...detail("为什么这样做", e.why),
@@ -233,22 +198,19 @@ export function ExperimentNotes({
       ...detail("输入说明", topic.inputHint),
       ...detail("实验说明", trace.caption),
       ...(frame.tables || []).flatMap((t) =>
-        tablePages(t.title, t.columns, t.rows, compact),
+        tableBlocks(t.title, t.columns, t.rows),
       ),
     ],
     result: !finished
       ? detail("尚未结束", "单步前进或拖动进度至末尾，即可核对最终输出。")
       : trace.output
         ? [
-            ...trace.output.summary.flatMap((line) =>
-              detail(trace.output!.title, line),
-            ),
+            ...detail(trace.output.title, trace.output.summary.join("\n")),
             ...(trace.output.columns
-              ? tablePages(
+              ? tableBlocks(
                   "结果明细",
                   trace.output.columns,
                   trace.output.rows || [],
-                  compact,
                 )
               : []),
           ]
@@ -259,9 +221,6 @@ export function ExperimentNotes({
             ) ?? "无返回值",
           ),
   };
-  const pages = sections[tab],
-    current = Math.min(page, pages.length - 1),
-    note = pages[current];
   return (
     <>
       <nav className="experiment-note-tabs" aria-label="实验讲解">
@@ -276,7 +235,7 @@ export function ExperimentNotes({
             aria-pressed={tab === id}
             onClick={() => {
               setTab(id);
-              setPage(0);
+              setVisit((v) => v + 1);
             }}
           >
             {label}
@@ -284,41 +243,12 @@ export function ExperimentNotes({
           </button>
         ))}
       </nav>
-      <section
-        className={`note-deck ${tab === "why" ? "step-explanation" : ""} ${tab === "result" ? "final-output" : ""}`}
-        aria-label={tab === "result" ? "演示输出" : "步骤说明"}
-      >
-        <div className="note-page" aria-live="polite">
-          <h5>{note?.title}</h5>
-          {note?.text && <p>{note.text}</p>}
-          {note?.rows && (
-            <table className="trace-table">
-              <thead>
-                <tr>
-                  {note.columns?.map((c) => (
-                    <th key={c}>{c}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {note.rows.map((r, i) => (
-                  <tr key={i}>
-                    {r.map((c, j) => (
-                      <td key={j}>{c}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-        <Pager
-          page={current}
-          count={pages.length}
-          onChange={setPage}
-          label="讲解"
-        />
-      </section>
+      <AdaptiveNotes
+        key={`${tab}-${visit}`}
+        blocks={sections[tab]}
+        className={`${tab === "why" ? "step-explanation" : ""} ${tab === "result" ? "final-output" : ""}`}
+        label={tab === "result" ? "演示输出" : "步骤说明"}
+      />
     </>
   );
 }

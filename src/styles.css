@@ -4779,3 +4779,65 @@ main {
 #section-experiment .fit-viewport {
   overflow: clip;
 }
+/* Stage 007: content-sized scenes and typography-measured pagination. */
+#section-experiment .fit-scene {
+  width: max-content;
+}
+#section-experiment .fit-scene .matrix-scroll {
+  width: max-content;
+}
+#section-experiment .fit-scene .matrix {
+  max-width: none;
+}
+#section-experiment .fit-scene .cells {
+  width: max-content;
+  max-width: 680px;
+}
+#section-experiment .note-deck {
+  position: relative;
+}
+#section-experiment .note-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+#section-experiment .note-block {
+  flex-shrink: 0;
+  min-width: 0;
+}
+#section-experiment .note-block h5 {
+  margin: 0 0 5px;
+  line-height: 1.5;
+}
+#section-experiment .note-block p {
+  line-height: 1.8;
+}
+#section-experiment .note-measure {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: auto;
+  visibility: hidden;
+  pointer-events: none;
+  contain: layout;
+}
+#section-experiment .pagination-probe {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  visibility: hidden;
+  pointer-events: none;
+}
+@media (max-width: 760px) {
+  #section-experiment .note-page {
+    gap: 8px;
+  }
+  #section-experiment .note-block h5 {
+    margin-bottom: 3px;
+  }
+  #section-experiment .note-block p {
+    line-height: 1.65;
+  }
+}
