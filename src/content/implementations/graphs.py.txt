@@ -1,0 +1,189 @@
+# @bfs
+def solve(adj, start):
+    from collections import deque
+    queue, seen, order = deque([start]), {start}, []
+    while queue:
+        u = queue.popleft()
+        order.append(u)
+        for v in adj[u]:
+            if v not in seen:
+                seen.add(v)
+                queue.append(v)
+    return order
+# @dfs
+def solve(adj, start):
+    stack, seen, order = [start], {start}, []
+    while stack:
+        u = stack.pop()
+        order.append(u)
+        for v in adj[u]:
+            if v not in seen:
+                seen.add(v)
+                stack.append(v)
+    return order
+# @dijkstra
+def solve(n, edges, start):
+    adj = [[] for _ in range(n)]
+    for u, v, w in edges:
+        if w < 0:
+            raise ValueError('negative edge')
+        adj[u].append((v, w))
+    dist, done = [float('inf')] * n, [False] * n
+    dist[start] = 0
+    for _ in range(n):
+        u = min((v for v in range(n) if not done[v]), key=lambda v: dist[v], default=-1)
+        if u < 0 or dist[u] == float('inf'):
+            break
+        done[u] = True
+        for v, w in adj[u]:
+            dist[v] = min(dist[v], dist[u] + w)
+    return [None if x == float('inf') else x for x in dist]
+# @bellman-ford
+def solve(n, edges, start):
+    d = [float('inf')] * n
+    d[start] = 0
+    for _ in range(n - 1):
+        changed = False
+        for u, v, w in edges:
+            if d[u] + w < d[v]:
+                d[v], changed = d[u] + w, True
+        if not changed:
+            break
+    negative = any(d[u] + w < d[v] for u, v, w in edges)
+    return {'negativeCycle': negative, 'distances': None if negative else [None if x == float('inf') else x for x in d]}
+# @floyd
+def solve(n, edges):
+    d = [[0 if i == j else float('inf') for j in range(n)] for i in range(n)]
+    for u, v, w in edges:
+        d[u][v] = min(d[u][v], w)
+    for k in range(n):
+        for i in range(n):
+            for j in range(n):
+                d[i][j] = min(d[i][j], d[i][k] + d[k][j])
+    negative = any(d[i][i] < 0 for i in range(n))
+    return {'negativeCycle': negative, 'distances': None if negative else [[None if x == float('inf') else x for x in row] for row in d]}
+# @topological
+def solve(adj):
+    from collections import deque
+    degree, order = [0] * len(adj), []
+    for row in adj:
+        for v in row:
+            degree[v] += 1
+    queue = deque(v for v, d in enumerate(degree) if d == 0)
+    while queue:
+        u = queue.popleft()
+        order.append(u)
+        for v in adj[u]:
+            degree[v] -= 1
+            if degree[v] == 0:
+                queue.append(v)
+    return order if len(order) == len(adj) else None
+# @kruskal
+def solve(n, edges):
+    parent, size, chosen, weight = list(range(n)), [1] * n, [], 0
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+    for u, v, w in sorted(edges, key=lambda edge: edge[2]):
+        a, b = find(u), find(v)
+        if a == b:
+            continue
+        if size[a] < size[b]:
+            a, b = b, a
+        parent[b] = a
+        size[a] += size[b]
+        chosen.append([u, v, w])
+        weight += w
+    return {'weight': weight, 'edges': chosen, 'connected': n == 0 or len(chosen) == n - 1}
+# @prim
+def solve(n, edges):
+    selected, weight = {0} if n else set(), 0
+    while len(selected) < n:
+        candidates = [e for e in edges if (e[0] in selected) != (e[1] in selected)]
+        if not candidates:
+            return {'weight': weight, 'connected': False}
+        u, v, w = min(candidates, key=lambda e: e[2])
+        selected.update([u, v])
+        weight += w
+    return {'weight': weight, 'connected': True}
+# @astar
+def solve(n, edges, start, goal, h):
+    # 要求非负边、一致启发式，且 h[goal] == 0。
+    g, parent, closed, opened = [float('inf')] * n, [-1] * n, set(), [start]
+    g[start] = 0
+    while opened:
+        u = min(opened, key=lambda v: g[v] + h[v])
+        opened.remove(u)
+        if u == goal:
+            path, v = [], goal
+            while v != -1:
+                path.append(v)
+                v = parent[v]
+            return {'cost': g[goal], 'path': path[::-1]}
+        closed.add(u)
+        for a, v, w in edges:
+            if a == u and v not in closed and g[u] + w < g[v]:
+                g[v], parent[v] = g[u] + w, u
+                if v not in opened:
+                    opened.append(v)
+    return {'cost': None, 'path': []}
+# @scc
+def solve(adj):
+    seen, order, reverse, components = set(), [], [[] for _ in adj], []
+    for u, row in enumerate(adj):
+        for v in row:
+            reverse[v].append(u)
+    def dfs(u):
+        seen.add(u)
+        for v in adj[u]:
+            if v not in seen:
+                dfs(v)
+        order.append(u)
+    for u in range(len(adj)):
+        if u not in seen:
+            dfs(u)
+    seen.clear()
+    def collect(u, part):
+        seen.add(u)
+        part.append(u)
+        for v in reverse[u]:
+            if v not in seen:
+                collect(v, part)
+    for u in reversed(order):
+        if u not in seen:
+            part = []
+            collect(u, part)
+            components.append(sorted(part))
+    return sorted(components, key=lambda part: part[0])
+# @max-flow
+def solve(n, edges, source, sink):
+    from collections import deque
+    if source == sink:
+        raise ValueError('distinct terminals required')
+    residual = [[0] * n for _ in range(n)]
+    for u, v, capacity in edges:
+        residual[u][v] += capacity
+    flow = 0
+    while True:
+        parent, queue = [-1] * n, deque([source])
+        parent[source] = source
+        while queue and parent[sink] < 0:
+            u = queue.popleft()
+            for v in range(n):
+                if parent[v] < 0 and residual[u][v] > 0:
+                    parent[v] = u
+                    queue.append(v)
+        if parent[sink] < 0:
+            return flow
+        delta, v = float('inf'), sink
+        while v != source:
+            delta = min(delta, residual[parent[v]][v])
+            v = parent[v]
+        v = sink
+        while v != source:
+            residual[parent[v]][v] -= delta
+            residual[v][parent[v]] += delta
+            v = parent[v]
+        flow += delta

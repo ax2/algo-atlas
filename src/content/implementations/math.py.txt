@@ -1,0 +1,41 @@
+# @gcd
+def solve(a, b):
+    a, b = abs(a), abs(b)
+    while b:
+        a, b = b, a % b
+    return a
+# @sieve
+def solve(n):
+    prime = [True] * (n + 1)
+    for p in range(2, int(n ** 0.5) + 1):
+        if prime[p]:
+            for x in range(p * p, n + 1, p):
+                prime[x] = False
+    return [p for p in range(2, n + 1) if prime[p]]
+# @fast-power
+def solve(base, exponent, modulus):
+    a, b, result = base % modulus, exponent, 1 % modulus
+    while b:
+        if b % 2:
+            result = result * a % modulus
+        a = a * a % modulus
+        b //= 2
+    return result
+# @bitmask
+def solve(n):
+    return [[bit for bit in range(n) if mask & (1 << bit)] for mask in range(1 << n)]
+# @convex-hull
+def solve(points):
+    p = sorted(set(map(tuple, points)))
+    if len(p) <= 1:
+        return [list(x) for x in p]
+    def cross(a, b, c):
+        return (b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0])
+    def chain(items):
+        hull = []
+        for x in items:
+            while len(hull) >= 2 and cross(hull[-2], hull[-1], x) <= 0:
+                hull.pop()
+            hull.append(x)
+        return hull[:-1]
+    return [list(x) for x in chain(p) + chain(p[::-1])]

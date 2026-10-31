@@ -39,8 +39,14 @@ test("system reduced motion removes decorative layers; lesson tab preserves posi
   await expect(page.getByRole("button", { name: "光影动效" })).toBeDisabled();
   await page.getByRole("button", { name: "下一步", exact: true }).click();
   await expect(page.locator(".bar-glow")).toHaveCount(0);
-  await page.getByRole("tab", { name: "复杂度分析" }).click();
-  await page.getByRole("tab", { name: "图解实验" }).click();
+  await page
+    .getByRole("navigation", { name: "课程章节" })
+    .getByRole("button", { name: "复杂度分析" })
+    .click();
+  await page
+    .getByRole("navigation", { name: "课程章节" })
+    .getByRole("button", { name: "图解实验" })
+    .click();
   await expect(page.getByRole("slider", { name: "演示进度" })).toHaveValue("1");
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await expect(page.getByRole("button", { name: "光影动效" })).toBeEnabled();

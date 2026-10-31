@@ -28,7 +28,9 @@ export function PracticeLibrary({
   const [query, setQuery] = useState(""),
     [track, setTrack] = useState("all"),
     [level, setLevel] = useState("all"),
-    [topicFilter, setTopic] = useState(topic),
+    [topicFilter, setTopic] = useState(
+      Object.hasOwn(topicById, topic) ? topic : "",
+    ),
     [page, setPage] = useState(0),
     [status, setStatus] = useState("all"),
     [hint, setHint] = useState(false),
@@ -248,13 +250,11 @@ export function PracticeLibrary({
           }}
         >
           <option value="">全部专题</option>
-          {topics
-            .filter((t) => problems.some((p) => p.topics.includes(t.id)))
-            .map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
+          {topics.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
         </select>
         <select
           aria-label="练习状态"
@@ -285,6 +285,21 @@ export function PracticeLibrary({
       <p className="muted" role="status">
         找到 {filtered.length} 道题 · 已练习 {done.length}/{problems.length}
       </p>
+      {topicFilter && (
+        <div className="practice-context" aria-label="当前练习专题">
+          <div>
+            <strong>{topicById[topicFilter].name} · 专题练习</strong>
+            <p>
+              {filtered.length
+                ? "已按当前课程筛选；点击题目查看分层提示与完整答案。"
+                : "此筛选暂无独立题目。可先回到课程完成预测题与实验任务，后续题目将逐步补充。"}
+            </p>
+          </div>
+          <a className="button" href={`#/lesson/${topicFilter}`}>
+            返回当前课程
+          </a>
+        </div>
+      )}
       <div className="problem-list">
         {filtered.slice(current * 8, current * 8 + 8).map((p) => (
           <button

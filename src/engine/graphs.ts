@@ -95,8 +95,14 @@ export function graphs(id: string, variant = 0): Trace {
     y: [160, 60, 255, 60, 255, 160][i],
   }));
   let reversed = false;
+  let worklists: Frame["worklists"], residualGraph: number[][] | undefined;
   const edge = (path: Link[] = [], labels = false): Edge[] =>
-    links.map(([u, v, w]) => ({
+    (residualGraph
+      ? residualGraph.flatMap((row, u) =>
+          row.flatMap((w, v) => (w > 0 ? [[u, v, w] as Link] : [])),
+        )
+      : links
+    ).map(([u, v, w]) => ({
       from: String(reversed ? v : u),
       to: String(reversed ? u : v),
       label:
@@ -125,6 +131,7 @@ export function graphs(id: string, variant = 0): Trace {
   ) =>
     add(title, detail, {
       inputState,
+      worklists,
       nodes: base.map((p, i) => ({
         ...p,
         label:
@@ -134,7 +141,7 @@ export function graphs(id: string, variant = 0): Trace {
       })),
       edges: [
         ...edge(path),
-        ...(id === "max-flow"
+        ...(id === "max-flow" && !residualGraph
           ? path
               .filter(([u, v]) => !links.some(([a, b]) => a === u && b === v))
               .map(([u, v, w]) => ({
@@ -146,7 +153,18 @@ export function graphs(id: string, variant = 0): Trace {
               }))
           : []),
       ],
-      stats: { 顶点: n, 边: links.length },
+      stats: {
+        顶点: n,
+        输入边: links.length,
+        ...(residualGraph
+          ? {
+              正残量边: residualGraph.reduce(
+                (sum, row) => sum + row.filter((w) => w > 0).length,
+                0,
+              ),
+            }
+          : {}),
+      },
     });
   emit(
     "读懂这张图",
@@ -176,9 +194,24 @@ export function graphs(id: string, variant = 0): Trace {
       frontier = [0],
       order: number[] = [];
     let head = 0;
+    const frontierState = () => {
+      const pending = (
+        id === "bfs" ? frontier.slice(head) : [...frontier].reverse()
+      ).map((v) => base[v].label);
+      worklists = [
+        {
+          name: id === "bfs" ? "BFS 队列 · 队首在左" : "DFS 栈 · 栈顶在左",
+          items: pending,
+        },
+        { name: "已输出访问序列", items: order.map((v) => base[v].label) },
+      ];
+    };
+    frontierState();
+    emit("初始化待处理容器", "起点 A 入队/栈即标记为发现，避免重复加入。");
     while (frontier.length > head) {
       const u = id === "bfs" ? frontier[head++] : frontier.pop()!;
       order.push(u);
+      frontierState();
       inputState = {
         source: graphInput,
         current: base[u].label,
@@ -200,6 +233,7 @@ export function graphs(id: string, variant = 0): Trace {
         if (!seen.has(e[1])) {
           seen.add(e[1]);
           frontier.push(e[1]);
+          frontierState();
           inputState = {
             ...inputState!,
             pending: (id === "bfs"
@@ -227,6 +261,28 @@ export function graphs(id: string, variant = 0): Trace {
     d[0] = 0;
     const done: number[] = [],
       fixed = Array(n).fill(false);
+    const predecessor = Array(n).fill(-1);
+    const candidates = () => {
+      worklists = [
+        {
+          name: "未确定候选 · 线性扫描（非堆）",
+          items: range(n)
+            .filter((v) => !fixed[v] && Number.isFinite(d[v]))
+            .sort((a, b) => d[a] - d[b])
+            .map((v) => `${base[v].label}: ${d[v]}`),
+        },
+        { name: "已确定", items: done.map((v) => base[v].label) },
+      ];
+    };
+    candidates();
+    emit(
+      "初始化距离",
+      "仅起点距离为 0，其他点为 ∞；未到达的点暂不列入有限候选。",
+      [],
+      -1,
+      [],
+      d,
+    );
     while (done.length < n) {
       let u = -1;
       for (let i = 0; i < n; i++)
@@ -234,6 +290,7 @@ export function graphs(id: string, variant = 0): Trace {
       if (u < 0 || !Number.isFinite(d[u])) break;
       done.push(u);
       fixed[u] = true;
+      candidates();
       emit(
         "确定最小距离",
         `${base[u].label} 的距离 ${d[u]} 已确定。${id === "astar" ? "本实验 h=0，因此 f=g。" : ""}`,
@@ -246,6 +303,8 @@ export function graphs(id: string, variant = 0): Trace {
         const [, v, w] = e;
         if (d[u] + w < d[v]) {
           d[v] = d[u] + w;
+          predecessor[v] = u;
+          candidates();
           emit(
             "松弛出边",
             `经过 ${base[u].label} 到 ${base[v].label} 更短，更新为 ${d[v]}。`,
@@ -258,7 +317,20 @@ export function graphs(id: string, variant = 0): Trace {
       }
     }
     result = d;
-    emit("最短距离已确定", `A → F 的最小代价为 ${d[5]}。`, done, -1, [], d);
+    const route: Link[] = [];
+    for (let v = 5; predecessor[v] >= 0; v = predecessor[v]) {
+      const u = predecessor[v];
+      route.unshift([u, v, adj[u].find((e) => e[1] === v)![2]]);
+    }
+    emit(
+      "沿前驱还原最短路径",
+      `从 F 沿前驱回到 A，再反转路径：${[0, ...route.map((e) => e[1])].map((v) => base[v].label).join(" → ")}。`,
+      done,
+      -1,
+      route,
+      d,
+    );
+    emit("最短距离已确定", `A → F 的最小代价为 ${d[5]}。`, done, -1, route, d);
   } else if (id === "bellman-ford") {
     const d = Array(n).fill(Infinity);
     d[0] = 0;
@@ -342,6 +414,17 @@ export function graphs(id: string, variant = 0): Trace {
     for (const [, v] of links) indeg[v]++;
     const q = range(n).filter((i) => !indeg[i]),
       order: number[] = [];
+    let head = 0;
+    const queueState = () => {
+      worklists = [
+        {
+          name: "零入度队列 · 队首在左",
+          items: q.slice(head).map((v) => base[v].label),
+        },
+        { name: "已输出拓扑序", items: order.map((v) => base[v].label) },
+      ];
+    };
+    queueState();
     emit(
       "计算入度",
       `当前零入度顶点：${q.map((i) => base[i].label).join(", ") || "无"}。`,
@@ -350,14 +433,40 @@ export function graphs(id: string, variant = 0): Trace {
       [],
       indeg,
     );
-    let head = 0;
     while (head < q.length) {
       const u = q[head++];
       order.push(u);
-      for (const [, v] of adj[u]) if (--indeg[v] === 0) q.push(v);
+      queueState();
+      emit(
+        "零入度点出队",
+        `输出 ${base[u].label}。接下来逐条移除它的出边。`,
+        order,
+        u,
+        [],
+        indeg,
+      );
+      for (const e of adj[u]) {
+        const v = e[1];
+        indeg[v]--;
+        if (indeg[v] === 0) q.push(v);
+        queueState();
+        emit(
+          indeg[v] === 0 ? "入度归零，加入队列" : "移除一条依赖边",
+          `${base[u].label} → ${base[v].label} 已处理，${base[v].label} 入度为 ${indeg[v]}。${indeg[v] === 0 ? "现在可安全排入队尾。" : "仍有其他前置依赖，不能入队。"}`,
+          order,
+          v,
+          [e],
+          indeg,
+        );
+      }
       emit(
         "移除零入度顶点",
-        `输出 ${base[u].label}，删除其出边后新队列：${q.map((i) => base[i].label).join(", ") || "空"}。`,
+        `输出 ${base[u].label}，删除其出边后新队列：${
+          q
+            .slice(head)
+            .map((i) => base[i].label)
+            .join(", ") || "空"
+        }。`,
         order,
         u,
         adj[u],
@@ -436,25 +545,66 @@ export function graphs(id: string, variant = 0): Trace {
   } else if (id === "scc") {
     const seen = new Set<number>(),
       order: number[] = [];
+    const stack: number[] = [];
+    const stackState = () => {
+      worklists = [
+        {
+          name: "递归调用栈 · 栈顶在左",
+          items: [...stack].reverse().map((v) => base[v].label),
+        },
+        {
+          name: reversed ? "第二遍入口顺序" : "完成顺序 · 退出才追加",
+          items: order.map((v) => base[v].label),
+        },
+      ];
+    };
     const dfs = (u: number) => {
       seen.add(u);
+      stack.push(u);
+      stackState();
       emit("原图深度搜索", "先递归子节点，退出时记录后序。", [...seen], u);
       for (const [, v] of adj[u]) if (!seen.has(v)) dfs(v);
       order.push(u);
+      stack.pop();
+      stackState();
+      emit(
+        "退出递归，记录后序",
+        `${base[u].label} 的所有出边已处理，现在追加到完成顺序。`,
+        [...seen],
+        u,
+      );
     };
     for (let i = 0; i < n; i++) if (!seen.has(i)) dfs(i);
     const rev: number[][] = range(n).map(() => []);
     for (const [u, v] of links) rev[v].push(u);
     seen.clear();
     reversed = true;
+    order.reverse();
+    stackState();
     emit("反转全部有向边", "现在画面显示转置图，按原图逆后序逐个搜索。 ");
     const components: number[][] = [];
     const collect = (u: number, c: number[]) => {
       seen.add(u);
       c.push(u);
+      stack.push(u);
+      stackState();
+      emit(
+        "反图沿边扩展分量",
+        `将 ${base[u].label} 纳入当前分量，沿转置后的箭头继续搜索。`,
+        c,
+        u,
+      );
       for (const v of rev[u]) if (!seen.has(v)) collect(v, c);
+      stack.pop();
+      stackState();
+      emit(
+        "反图递归返回",
+        `${base[u].label} 的反图邻居已处理，弹出调用栈。`,
+        c,
+        u,
+      );
     };
-    for (const u of order.reverse())
+    for (const u of order)
       if (!seen.has(u)) {
         const c: number[] = [];
         collect(u, c);
@@ -475,6 +625,7 @@ export function graphs(id: string, variant = 0): Trace {
   } else if (id === "max-flow") {
     const residual = range(n).map(() => Array(n).fill(0));
     for (const [u, v, w] of links) residual[u][v] += w;
+    residualGraph = residual;
     const neighbors: number[][] = range(n).map((u) => [
       ...new Set(
         links.flatMap(([a, b]) => (a === u ? [b] : b === u ? [a] : [])),
@@ -486,12 +637,48 @@ export function graphs(id: string, variant = 0): Trace {
         q = [0];
       parent[0] = 0;
       let head = 0;
+      const queueState = () => {
+        worklists = [
+          {
+            name: "残量 BFS 队列 · 队首在左",
+            items: q.slice(head).map((v) => base[v].label),
+          },
+          {
+            name: "本轮已发现",
+            items: range(n)
+              .filter((v) => parent[v] >= 0)
+              .map((v) => base[v].label),
+          },
+        ];
+      };
+      queueState();
+      emit(
+        "重新搜索残量增广路",
+        "每轮清空 visited 与队列，从 A 开始；当前边上的数字表示正的剩余容量。",
+        [],
+        0,
+      );
       while (head < q.length && parent[5] < 0) {
         const u = q[head++];
+        queueState();
+        emit(
+          "残量 BFS 出队",
+          `取出 ${base[u].label}，只沿剩余容量大于 0 的边扩展。`,
+          q,
+          u,
+        );
         for (const v of neighbors[u])
           if (parent[v] < 0 && residual[u][v] > 0) {
             parent[v] = u;
             q.push(v);
+            queueState();
+            emit(
+              "残量 BFS 发现顶点",
+              `${base[u].label} → ${base[v].label} 剩余 ${residual[u][v]}，记录前驱并入队。`,
+              q,
+              v,
+              [[u, v, residual[u][v]]],
+            );
           }
       }
       if (parent[5] < 0) break;
@@ -499,9 +686,24 @@ export function graphs(id: string, variant = 0): Trace {
       const path: Link[] = [];
       for (let v = 5; v !== 0; v = parent[v])
         amount = Math.min(amount, residual[parent[v]][v]);
+      for (let v = 5; v !== 0; v = parent[v])
+        path.unshift([parent[v], v, amount]);
+      worklists = [
+        ...(worklists || []),
+        {
+          name: "增广路径 · 从源到汇",
+          items: ["A", ...path.map((e) => base[e[1]].label)],
+        },
+      ];
+      emit(
+        "找到增广路与瓶颈",
+        `路径最小残量为 ${amount}。下一步同时更新正向与反向残量。`,
+        [],
+        5,
+        path,
+      );
       for (let v = 5; v !== 0; v = parent[v]) {
         const u = parent[v];
-        path.push([u, v, amount]);
         residual[u][v] -= amount;
         residual[v][u] += amount;
       }
@@ -514,6 +716,7 @@ export function graphs(id: string, variant = 0): Trace {
         path,
       );
       add("查看残量网络", "每格为仍可追加的流量；反向格记录可撤回量。", {
+        worklists,
         matrix: residual,
         rowLabels: base.map((x) => x.label),
         colLabels: base.map((x) => x.label),
@@ -527,6 +730,7 @@ export function graphs(id: string, variant = 0): Trace {
     frames,
     kind: "graph",
     result,
+    source: graphInput,
     caption:
       "精选 6 顶点场景；节点标签可携带距离/入度。图中权重与路径均由场景数据计算。",
   };

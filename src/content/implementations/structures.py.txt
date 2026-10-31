@@ -1,0 +1,398 @@
+# @array
+def solve(values, index, value):
+    a = list(values) + [None]
+    for j in range(len(a) - 1, index, -1):
+        a[j] = a[j - 1]
+    a[index] = value
+    return a
+# @linked-list
+def solve(values):
+    head = None
+    for value in reversed(values):
+        head = {'value': value, 'next': head}
+    previous, current = None, head
+    while current:
+        following = current['next']
+        current['next'] = previous
+        previous, current = current, following
+    out, node = [], previous
+    while node:
+        out.append(node['value'])
+        node = node['next']
+    return out
+# @stack
+def solve(operations):
+    stack, output = [], []
+    for operation in operations:
+        op = operation[0]
+        if op == 'push':
+            stack.append(operation[1])
+        if op == 'pop':
+            output.append(stack.pop() if stack else None)
+        if op == 'peek':
+            output.append(stack[-1] if stack else None)
+    return output
+# @queue
+def solve(operations):
+    from collections import deque
+    queue, output = deque(), []
+    for operation in operations:
+        op = operation[0]
+        if op == 'push':
+            queue.append(operation[1])
+        if op == 'pop':
+            output.append(queue.popleft() if queue else None)
+        if op == 'peek':
+            output.append(queue[0] if queue else None)
+    return output
+# @deque
+def solve(operations):
+    from collections import deque
+    queue, output = deque(), []
+    for operation in operations:
+        op = operation[0]
+        if op == 'pushLeft':
+            queue.appendleft(operation[1])
+        if op == 'pushRight':
+            queue.append(operation[1])
+        if op in ('popLeft', 'popRight'):
+            output.append((queue.popleft() if op == 'popLeft' else queue.pop()) if queue else None)
+    return output
+# @hash-table
+def solve(operations):
+    buckets, output = [[] for _ in range(17)], []
+    def hashed(key):
+        h = 0
+        for c in key:
+            h = (h * 31 + ord(c)) % 17
+        return h
+    for operation in operations:
+        op, key = operation[:2]
+        bucket = buckets[hashed(key)]
+        i = next((i for i, pair in enumerate(bucket) if pair[0] == key), -1)
+        if op == 'set':
+            if i < 0:
+                bucket.append([key, operation[2]])
+            else:
+                bucket[i][1] = operation[2]
+        if op == 'get':
+            output.append(None if i < 0 else bucket[i][1])
+        if op == 'delete' and i >= 0:
+            bucket.pop(i)
+    return output
+# @bst
+def solve(values, queries):
+    def insert(node, key):
+        if node is None:
+            return {'key': key, 'left': None, 'right': None}
+        if key < node['key']:
+            node['left'] = insert(node['left'], key)
+        if key > node['key']:
+            node['right'] = insert(node['right'], key)
+        return node
+    root = None
+    for key in values:
+        root = insert(root, key)
+    out = []
+    for key in queries:
+        node = root
+        while node and node['key'] != key:
+            node = node['left' if key < node['key'] else 'right']
+        out.append(node is not None)
+    return out
+# @avl
+def solve(values):
+    def height(n):
+        return n['height'] if n else 0
+    def fix(n):
+        n['height'] = 1 + max(height(n['left']), height(n['right']))
+        return n
+    def right(y):
+        x = y['left']
+        y['left'], x['right'] = x['right'], y
+        fix(y)
+        return fix(x)
+    def left(x):
+        y = x['right']
+        x['right'], y['left'] = y['left'], x
+        fix(x)
+        return fix(y)
+    def insert(n, key):
+        if not n:
+            return {'key': key, 'height': 1, 'left': None, 'right': None}
+        if key < n['key']:
+            n['left'] = insert(n['left'], key)
+        elif key > n['key']:
+            n['right'] = insert(n['right'], key)
+        else:
+            return n
+        fix(n)
+        balance = height(n['left']) - height(n['right'])
+        if balance > 1:
+            if key > n['left']['key']:
+                n['left'] = left(n['left'])
+            return right(n)
+        if balance < -1:
+            if key < n['right']['key']:
+                n['right'] = right(n['right'])
+            return left(n)
+        return n
+    root = None
+    for x in values:
+        root = insert(root, x)
+    def pack(n):
+        return [n['key'], pack(n['left']), pack(n['right']), n['height']] if n else None
+    return pack(root)
+# @red-black
+def solve(values):
+    def red(n):
+        return n is not None and n['red']
+    def left(h):
+        x = h['right']
+        h['right'], x['left'] = x['left'], h
+        x['red'], h['red'] = h['red'], True
+        return x
+    def right(h):
+        x = h['left']
+        h['left'], x['right'] = x['right'], h
+        x['red'], h['red'] = h['red'], True
+        return x
+    def insert(h, key):
+        if not h:
+            return {'key': key, 'red': True, 'left': None, 'right': None}
+        if key < h['key']:
+            h['left'] = insert(h['left'], key)
+        elif key > h['key']:
+            h['right'] = insert(h['right'], key)
+        if red(h['right']) and not red(h['left']):
+            h = left(h)
+        if red(h['left']) and red(h['left']['left']):
+            h = right(h)
+        if red(h['left']) and red(h['right']):
+            h['red'] = not h['red']
+            h['left']['red'] = not h['left']['red']
+            h['right']['red'] = not h['right']['red']
+        return h
+    root = None
+    for x in values:
+        root = insert(root, x)
+        root['red'] = False
+    def pack(n):
+        return [n['key'], pack(n['left']), pack(n['right']), 'R' if n['red'] else 'B'] if n else None
+    return pack(root)
+# @heap
+def solve(values):
+    heap, output = [], []
+    for x in values:
+        heap.append(x)
+        i = len(heap) - 1
+        while i > 0:
+            p = (i - 1) // 2
+            if heap[p] <= heap[i]:
+                break
+            heap[p], heap[i] = heap[i], heap[p]
+            i = p
+    while heap:
+        output.append(heap[0])
+        last = heap.pop()
+        if not heap:
+            break
+        heap[0], i = last, 0
+        while i * 2 + 1 < len(heap):
+            c = i * 2 + 1
+            if c + 1 < len(heap) and heap[c + 1] < heap[c]:
+                c += 1
+            if heap[i] <= heap[c]:
+                break
+            heap[i], heap[c] = heap[c], heap[i]
+            i = c
+    return output
+# @trie
+def solve(words, queries):
+    root = {'children': {}, 'end': False}
+    for word in words:
+        node = root
+        for ch in word:
+            node = node['children'].setdefault(ch, {'children': {}, 'end': False})
+        node['end'] = True
+    out = []
+    for kind, word in queries:
+        node = root
+        for ch in word:
+            node = node['children'].get(ch)
+            if node is None:
+                break
+        out.append(node is not None and (kind == 'prefix' or node['end']))
+    return out
+# @union-find
+def solve(n, unions, queries):
+    parent, size = list(range(n)), [1] * n
+    def find(x):
+        if parent[x] != x:
+            parent[x] = find(parent[x])
+        return parent[x]
+    for x, y in unions:
+        a, b = find(x), find(y)
+        if a == b:
+            continue
+        if size[a] < size[b]:
+            a, b = b, a
+        parent[b] = a
+        size[a] += size[b]
+    return [find(x) == find(y) for x, y in queries]
+# @fenwick
+def solve(values, operations):
+    tree, out = [0] * (len(values) + 1), []
+    def add(i, delta):
+        i += 1
+        while i < len(tree):
+            tree[i] += delta
+            i += i & -i
+    def prefix(end):
+        total = 0
+        while end > 0:
+            total += tree[end]
+            end -= end & -end
+        return total
+    for i, x in enumerate(values):
+        add(i, x)
+    for op, a, b in operations:
+        if op == 'add':
+            add(a, b)
+        if op == 'sum':
+            out.append(prefix(b) - prefix(a))
+    return out
+# @segment-tree
+def solve(values, operations):
+    n = 1
+    while n < len(values):
+        n *= 2
+    tree, out = [0] * (n * 2), []
+    tree[n:n + len(values)] = values
+    for i in range(n - 1, 0, -1):
+        tree[i] = tree[i * 2] + tree[i * 2 + 1]
+    for op, a, b in operations:
+        if op == 'set':
+            p = n + a
+            tree[p] = b
+            while p > 1:
+                p //= 2
+                tree[p] = tree[p * 2] + tree[p * 2 + 1]
+        if op == 'sum':
+            l, r, total = n + a, n + b, 0
+            while l < r:
+                if l % 2:
+                    total += tree[l]
+                    l += 1
+                if r % 2:
+                    r -= 1
+                    total += tree[r]
+                l //= 2
+                r //= 2
+            out.append(total)
+    return out
+# @skip-list
+def solve(values, heights, queries):
+    levels, head = 4, {'key': float('-inf'), 'next': [None] * 4}
+    for key, height in zip(values, heights):
+        update, p = [None] * levels, head
+        for level in range(levels - 1, -1, -1):
+            while p['next'][level] and p['next'][level]['key'] < key:
+                p = p['next'][level]
+            update[level] = p
+        if p['next'][0] and p['next'][0]['key'] == key:
+            continue
+        node = {'key': key, 'next': [None] * height}
+        for level in range(height):
+            node['next'][level] = update[level]['next'][level]
+            update[level]['next'][level] = node
+    out = []
+    for key in queries:
+        p = head
+        for level in range(levels - 1, -1, -1):
+            while p['next'][level] and p['next'][level]['key'] < key:
+                p = p['next'][level]
+        out.append(p['next'][0] is not None and p['next'][0]['key'] == key)
+    return out
+# @b-tree
+def solve(values, queries):
+    root = {'keys': [], 'children': []}
+    def split(parent, i):
+        child = parent['children'][i]
+        right = {'keys': child['keys'][2:], 'children': child['children'][2:]}
+        parent['keys'].insert(i, child['keys'][1])
+        parent['children'].insert(i + 1, right)
+        child['keys'], child['children'] = child['keys'][:1], child['children'][:2]
+    def insert(node, key):
+        i = 0
+        while i < len(node['keys']) and node['keys'][i] < key:
+            i += 1
+        if i < len(node['keys']) and node['keys'][i] == key:
+            return
+        if not node['children']:
+            node['keys'].insert(i, key)
+            return
+        if len(node['children'][i]['keys']) == 3:
+            split(node, i)
+            if key == node['keys'][i]:
+                return
+            if key > node['keys'][i]:
+                i += 1
+        insert(node['children'][i], key)
+    for key in values:
+        if len(root['keys']) == 3:
+            root = {'keys': [], 'children': [root]}
+            split(root, 0)
+        insert(root, key)
+    out = []
+    for key in queries:
+        node, found = root, False
+        while node:
+            i = 0
+            while i < len(node['keys']) and node['keys'][i] < key:
+                i += 1
+            if i < len(node['keys']) and node['keys'][i] == key:
+                found = True
+                break
+            node = node['children'][i] if node['children'] else None
+        out.append(found)
+    return out
+# @bloom
+def solve(words, queries):
+    bits = [False] * 64
+    def hashes(word):
+        out = []
+        for seed in (17, 31, 47):
+            h = 0
+            for c in word:
+                h = (h * seed + ord(c)) % 64
+            out.append(h)
+        return out
+    for word in words:
+        for h in hashes(word):
+            bits[h] = True
+    return [all(bits[h] for h in hashes(word)) for word in queries]
+# @lru
+def solve(capacity, operations):
+    from collections import OrderedDict
+    cache, out = OrderedDict(), []
+    for operation in operations:
+        op, key = operation[:2]
+        if op == 'get':
+            out.append(cache.get(key))
+            if key in cache:
+                cache.move_to_end(key)
+        elif op == 'set' and capacity > 0:
+            cache[key] = operation[2]
+            cache.move_to_end(key)
+            if len(cache) > capacity:
+                cache.popitem(last=False)
+    return out
+# @graph
+def solve(n, edges, directed):
+    adjacency = [[] for _ in range(n)]
+    for u, v in edges:
+        adjacency[u].append(v)
+        if not directed:
+            adjacency[v].append(u)
+    return adjacency

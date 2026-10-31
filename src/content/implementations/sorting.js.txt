@@ -1,0 +1,164 @@
+// @bubble
+function solve(input) {
+  const a = [...input];
+  for (let end = a.length - 1; end > 0; end--) {
+    let changed = false;
+    for (let j = 0; j < end; j++) {
+      if (a[j] > a[j + 1]) {
+        [a[j], a[j + 1]] = [a[j + 1], a[j]];
+        changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+  return a;
+}
+// @selection
+function solve(input) {
+  const a = [...input];
+  for (let i = 0; i < a.length; i++) {
+    let m = i;
+    for (let j = i + 1; j < a.length; j++) if (a[j] < a[m]) m = j;
+    [a[i], a[m]] = [a[m], a[i]];
+  }
+  return a;
+}
+// @insertion
+function solve(input) {
+  const a = [...input];
+  for (let i = 1; i < a.length; i++) {
+    const value = a[i];
+    let j = i;
+    while (j > 0 && a[j - 1] > value) {
+      a[j] = a[j - 1];
+      j--;
+    }
+    a[j] = value;
+  }
+  return a;
+}
+// @quick
+function solve(input) {
+  const a = [...input];
+  function sort(lo, hi) {
+    if (lo >= hi) return;
+    const pivot = a[hi];
+    let i = lo;
+    for (let j = lo; j < hi; j++) {
+      if (a[j] < pivot) {
+        [a[i], a[j]] = [a[j], a[i]];
+        i++;
+      }
+    }
+    [a[i], a[hi]] = [a[hi], a[i]];
+    sort(lo, i - 1);
+    sort(i + 1, hi);
+  }
+  sort(0, a.length - 1);
+  return a;
+}
+// @merge
+function solve(a) {
+  if (a.length < 2) return [...a];
+  const mid = Math.floor(a.length / 2);
+  const left = solve(a.slice(0, mid)),
+    right = solve(a.slice(mid));
+  const out = [];
+  let i = 0,
+    j = 0;
+  while (i < left.length && j < right.length)
+    out.push(left[i] <= right[j] ? left[i++] : right[j++]);
+  return out.concat(left.slice(i), right.slice(j));
+}
+// @heap-sort
+function solve(input) {
+  const a = [...input];
+  function down(i, n) {
+    while (2 * i + 1 < n) {
+      let child = 2 * i + 1;
+      if (child + 1 < n && a[child + 1] > a[child]) child++;
+      if (a[i] >= a[child]) break;
+      [a[i], a[child]] = [a[child], a[i]];
+      i = child;
+    }
+  }
+  for (let i = Math.floor(a.length / 2) - 1; i >= 0; i--) down(i, a.length);
+  for (let end = a.length - 1; end > 0; end--) {
+    [a[0], a[end]] = [a[end], a[0]];
+    down(0, end);
+  }
+  return a;
+}
+// @counting
+function solve(a) {
+  if (!a.length) return [];
+  const count = Array(Math.max(...a) + 1).fill(0);
+  for (const x of a) count[x]++;
+  const out = [];
+  for (let x = 0; x < count.length; x++)
+    for (let c = 0; c < count[x]; c++) out.push(x);
+  return out;
+}
+// @radix
+function solve(input) {
+  let a = [...input];
+  const max = Math.max(0, ...a);
+  for (let place = 1; place <= max; place *= 10) {
+    const buckets = Array.from({ length: 10 }, () => []);
+    for (const x of a) buckets[Math.floor(x / place) % 10].push(x);
+    a = buckets.flat();
+  }
+  return a;
+}
+// @shell
+function solve(input) {
+  const a = [...input];
+  for (let gap = Math.floor(a.length / 2); gap > 0; gap = Math.floor(gap / 2)) {
+    for (let i = gap; i < a.length; i++) {
+      const x = a[i];
+      let j = i;
+      while (j >= gap && a[j - gap] > x) {
+        a[j] = a[j - gap];
+        j -= gap;
+      }
+      a[j] = x;
+    }
+  }
+  return a;
+}
+// @linear-search
+function solve(a, target) {
+  for (let i = 0; i < a.length; i++) if (a[i] === target) return i;
+  return -1;
+}
+// @binary-search
+function solve(a, target) {
+  let lo = 0,
+    hi = a.length;
+  while (lo < hi) {
+    const mid = lo + Math.floor((hi - lo) / 2);
+    if (a[mid] < target) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo < a.length && a[lo] === target ? lo : -1;
+}
+// @quickselect
+function solve(input, k) {
+  if (k < 0 || k >= input.length) throw new Error("k out of range");
+  const a = [...input];
+  let lo = 0,
+    hi = a.length - 1;
+  while (lo <= hi) {
+    const pivot = a[hi];
+    let p = lo;
+    for (let j = lo; j < hi; j++)
+      if (a[j] < pivot) {
+        [a[p], a[j]] = [a[j], a[p]];
+        p++;
+      }
+    [a[p], a[hi]] = [a[hi], a[p]];
+    if (p === k) return a[p];
+    if (p < k) lo = p + 1;
+    else hi = p - 1;
+  }
+}

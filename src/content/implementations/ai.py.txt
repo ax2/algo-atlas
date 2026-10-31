@@ -1,0 +1,110 @@
+# @gradient-descent
+def solve(start, target, rate, steps):
+    w, history = start, []
+    for _ in range(steps):
+        gradient = 2 * (w - target)
+        w -= rate * gradient
+        history.append({'w': w, 'loss': (w - target) ** 2})
+    return history
+# @kmeans
+def solve(points, initial_centers, rounds):
+    centers = [list(p) for p in initial_centers]
+    def distance(a, b):
+        return sum((x - y) ** 2 for x, y in zip(a, b))
+    def assign():
+        return [min(range(len(centers)), key=lambda k: distance(p, centers[k])) for p in points]
+    for _ in range(rounds):
+        labels = assign()
+        updated = []
+        for k, center in enumerate(centers):
+            group = [p for i, p in enumerate(points) if labels[i] == k]
+            updated.append([sum(p[d] for p in group) / len(group) for d in range(len(center))] if group else center)
+        centers = updated
+    return {'centers': centers, 'labels': assign()}
+# @knn
+def solve(points, labels, target, k):
+    order = sorted(range(len(points)), key=lambda i: (sum((x - y) ** 2 for x, y in zip(points[i], target)), i))[:k]
+    votes = {}
+    for i in order:
+        votes[labels[i]] = votes.get(labels[i], 0) + 1
+    return min(votes, key=lambda label: (-votes[label], label))
+# @perceptron
+def solve(points, labels, epochs):
+    weights, bias = [0] * len(points[0]), 0
+    for _ in range(epochs):
+        errors = 0
+        for p, label in zip(points, labels):
+            score = sum(x * w for x, w in zip(p, weights)) + bias
+            if label * score <= 0:
+                weights = [w + label * x for w, x in zip(weights, p)]
+                bias += label
+                errors += 1
+        if not errors:
+            break
+    return {'weights': weights, 'bias': bias, 'predictions': [1 if sum(x * w for x, w in zip(p, weights)) + bias >= 0 else -1 for p in points]}
+# @decision-tree
+def solve(xs, labels, queries):
+    from collections import Counter
+    def majority(ids):
+        counts = Counter(labels[i] for i in ids)
+        return min(counts, key=lambda label: (-counts[label], label))
+    def impurity(ids):
+        counts = Counter(labels[i] for i in ids)
+        return len(ids) - sum(c * c for c in counts.values()) / len(ids)
+    def build(ids):
+        if all(labels[i] == labels[ids[0]] for i in ids):
+            return {'value': labels[ids[0]]}
+        values, best = sorted(set(xs[i] for i in ids)), None
+        for i in range(1, len(values)):
+            threshold = (values[i - 1] + values[i]) / 2
+            left = [i for i in ids if xs[i] <= threshold]
+            right = [i for i in ids if xs[i] > threshold]
+            score = impurity(left) + impurity(right)
+            if best is None or score < best[0]:
+                best = (score, threshold, left, right)
+        return {'threshold': best[1], 'left': build(best[2]), 'right': build(best[3])} if best else {'value': majority(ids)}
+    root, out = build(list(range(len(xs)))), []
+    for x in queries:
+        node = root
+        while 'value' not in node:
+            node = node['left' if x <= node['threshold'] else 'right']
+        out.append(node['value'])
+    return out
+# @backprop
+def solve(x, target, w1, w2, rate):
+    import math
+    hidden = 1 / (1 + math.exp(-w1 * x))
+    prediction = w2 * hidden
+    error = prediction - target
+    grad2 = error * hidden
+    grad1 = error * w2 * hidden * (1 - hidden) * x
+    return {'prediction': prediction, 'loss': error * error / 2, 'grad1': grad1, 'grad2': grad2, 'weights': [w1 - rate * grad1, w2 - rate * grad2]}
+# @attention
+def solve(q, k, v, causal):
+    import math
+    scale, weights, output = math.sqrt(len(q[0])), [], []
+    for i, query in enumerate(q):
+        scores = [float('-inf') if causal and j > i else sum(x * y for x, y in zip(query, key)) / scale for j, key in enumerate(k)]
+        maximum = max(scores)
+        exps = [math.exp(x - maximum) for x in scores]
+        row = [x / sum(exps) for x in exps]
+        weights.append(row)
+        output.append([sum(w * v[j][d] for j, w in enumerate(row)) for d in range(len(v[0]))])
+    return {'weights': weights, 'output': output}
+# @minimax
+def solve(tree):
+    def search(node, maximizing, alpha, beta):
+        if isinstance(node, (int, float)):
+            return node
+        best = float('-inf') if maximizing else float('inf')
+        for child in node:
+            value = search(child, not maximizing, alpha, beta)
+            best = max(best, value) if maximizing else min(best, value)
+            if maximizing:
+                alpha = max(alpha, best)
+            else:
+                beta = min(beta, best)
+            if alpha >= beta:
+                break
+        return best
+    return search(tree, True, float('-inf'), float('inf'))

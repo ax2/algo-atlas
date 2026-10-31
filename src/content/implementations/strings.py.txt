@@ -1,0 +1,93 @@
+# @naive-match
+def solve(text, pattern):
+    found = []
+    for i in range(len(text) - len(pattern) + 1):
+        j = 0
+        while j < len(pattern) and text[i + j] == pattern[j]:
+            j += 1
+        if j == len(pattern):
+            found.append(i)
+    return found
+# @kmp
+def solve(text, pattern):
+    if not pattern:
+        return list(range(len(text) + 1))
+    pi, found, j = [0] * len(pattern), [], 0
+    for i in range(1, len(pattern)):
+        while j and pattern[i] != pattern[j]:
+            j = pi[j - 1]
+        if pattern[i] == pattern[j]:
+            j += 1
+        pi[i] = j
+    j = 0
+    for i, ch in enumerate(text):
+        while j and ch != pattern[j]:
+            j = pi[j - 1]
+        if ch == pattern[j]:
+            j += 1
+        if j == len(pattern):
+            found.append(i - j + 1)
+            j = pi[j - 1]
+    return found
+# @rabin-karp
+def solve(text, pattern):
+    n, m, base, mod = len(text), len(pattern), 257, 1000003
+    if m > n:
+        return []
+    if not m:
+        return list(range(n + 1))
+    target, hashed, power, found = 0, 0, 1, []
+    for j in range(m):
+        target = (target * base + ord(pattern[j])) % mod
+        hashed = (hashed * base + ord(text[j])) % mod
+        if j:
+            power = power * base % mod
+    for i in range(n - m + 1):
+        if hashed == target and text[i:i + m] == pattern:
+            found.append(i)
+        if i < n - m:
+            hashed = ((hashed - ord(text[i]) * power) * base + ord(text[i + m])) % mod
+    return found
+# @z-function
+def solve(s):
+    z, l, r = [0] * len(s), 0, 0
+    for i in range(1, len(s)):
+        if i < r:
+            z[i] = min(r - i, z[i - l])
+        while i + z[i] < len(s) and s[z[i]] == s[i + z[i]]:
+            z[i] += 1
+        if i + z[i] > r:
+            l, r = i, i + z[i]
+    return z
+# @suffix-array
+def solve(s):
+    # 直观版，切片和字符比较有额外成本。
+    return sorted(range(len(s)), key=lambda i: s[i:])
+# @huffman
+def solve(text):
+    counts = {}
+    for ch in text:
+        counts[ch] = counts.get(ch, 0) + 1
+    forest = [{'ch': ch, 'weight': weight} for ch, weight in counts.items()]
+    codes = {}
+    while len(forest) > 1:
+        forest.sort(key=lambda node: node['weight'])
+        left, right = forest.pop(0), forest.pop(0)
+        forest.append({'weight': left['weight'] + right['weight'], 'left': left, 'right': right})
+    def walk(node, prefix):
+        if 'ch' in node:
+            codes[node['ch']] = prefix or '0'
+        else:
+            walk(node['left'], prefix + '0')
+            walk(node['right'], prefix + '1')
+    if forest:
+        walk(forest[0], '')
+    encoded = ''.join(codes[ch] for ch in text)
+    reverse = {code: ch for ch, code in codes.items()}
+    decoded, buffer = '', ''
+    for bit in encoded:
+        buffer += bit
+        if buffer in reverse:
+            decoded += reverse[buffer]
+            buffer = ''
+    return {'codes': codes, 'encoded': encoded, 'decoded': decoded}

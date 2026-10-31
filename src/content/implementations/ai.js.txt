@@ -1,0 +1,168 @@
+// @gradient-descent
+function solve(start, target, rate, steps) {
+  let w = start;
+  const history = [];
+  for (let i = 0; i < steps; i++) {
+    const gradient = 2 * (w - target);
+    w -= rate * gradient;
+    history.push({ w, loss: (w - target) ** 2 });
+  }
+  return history;
+}
+// @kmeans
+function solve(points, initialCenters, rounds) {
+  let centers = initialCenters.map((p) => [...p]);
+  const distance = (a, b) => a.reduce((s, x, i) => s + (x - b[i]) ** 2, 0);
+  const assign = () =>
+    points.map((p) => {
+      let best = 0;
+      for (let k = 1; k < centers.length; k++)
+        if (distance(p, centers[k]) < distance(p, centers[best])) best = k;
+      return best;
+    });
+  for (let round = 0; round < rounds; round++) {
+    const labels = assign();
+    centers = centers.map((c, k) => {
+      const group = points.filter((_, i) => labels[i] === k);
+      return group.length
+        ? c.map((_, d) => group.reduce((s, p) => s + p[d], 0) / group.length)
+        : c;
+    });
+  }
+  return { centers, labels: assign() };
+}
+// @knn
+function solve(points, labels, target, k) {
+  const neighbors = points
+    .map((p, id) => ({
+      id,
+      d: p.reduce((s, x, i) => s + (x - target[i]) ** 2, 0),
+    }))
+    .sort((a, b) => a.d - b.d || a.id - b.id)
+    .slice(0, k);
+  const votes = new Map();
+  for (const { id } of neighbors)
+    votes.set(labels[id], (votes.get(labels[id]) || 0) + 1);
+  return [...votes].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0][0];
+}
+// @perceptron
+function solve(points, labels, epochs) {
+  const weights = Array(points[0].length).fill(0);
+  let bias = 0;
+  for (let epoch = 0; epoch < epochs; epoch++) {
+    let errors = 0;
+    points.forEach((p, i) => {
+      const score = p.reduce((s, x, j) => s + x * weights[j], bias);
+      if (labels[i] * score <= 0) {
+        weights.forEach((_, j) => (weights[j] += labels[i] * p[j]));
+        bias += labels[i];
+        errors++;
+      }
+    });
+    if (!errors) break;
+  }
+  return {
+    weights,
+    bias,
+    predictions: points.map((p) =>
+      p.reduce((s, x, j) => s + x * weights[j], bias) >= 0 ? 1 : -1,
+    ),
+  };
+}
+// @decision-tree
+function solve(xs, labels, queries) {
+  const majority = (ids) => {
+    const count = new Map();
+    for (const i of ids) count.set(labels[i], (count.get(labels[i]) || 0) + 1);
+    return [...count].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0][0];
+  };
+  function impurity(ids) {
+    const counts = new Map();
+    for (const i of ids)
+      counts.set(labels[i], (counts.get(labels[i]) || 0) + 1);
+    return (
+      ids.length -
+      [...counts.values()].reduce((s, c) => s + c * c, 0) / ids.length
+    );
+  }
+  function build(ids) {
+    if (ids.every((i) => labels[i] === labels[ids[0]]))
+      return { value: labels[ids[0]] };
+    const values = [...new Set(ids.map((i) => xs[i]))].sort((a, b) => a - b);
+    let best = null;
+    for (let i = 1; i < values.length; i++) {
+      const threshold = (values[i - 1] + values[i]) / 2,
+        left = ids.filter((i) => xs[i] <= threshold),
+        right = ids.filter((i) => xs[i] > threshold);
+      const score = impurity(left) + impurity(right);
+      if (!best || score < best.score) best = { score, threshold, left, right };
+    }
+    return best
+      ? {
+          threshold: best.threshold,
+          left: build(best.left),
+          right: build(best.right),
+        }
+      : { value: majority(ids) };
+  }
+  const root = build(xs.map((_, i) => i));
+  return queries.map((x) => {
+    let n = root;
+    while (n.value === undefined) n = x <= n.threshold ? n.left : n.right;
+    return n.value;
+  });
+}
+// @backprop
+function solve(x, target, w1, w2, rate) {
+  // 单隐藏 sigmoid 神经元 → 线性输出，L = (prediction-target)^2 / 2。
+  const hidden = 1 / (1 + Math.exp(-w1 * x)),
+    prediction = w2 * hidden,
+    error = prediction - target;
+  const grad2 = error * hidden,
+    grad1 = error * w2 * hidden * (1 - hidden) * x;
+  return {
+    prediction,
+    loss: (error * error) / 2,
+    grad1,
+    grad2,
+    weights: [w1 - rate * grad1, w2 - rate * grad2],
+  };
+}
+// @attention
+function solve(q, k, v, causal) {
+  const scale = Math.sqrt(q[0].length),
+    weights = [],
+    output = [];
+  for (let i = 0; i < q.length; i++) {
+    const scores = k.map((key, j) =>
+      causal && j > i
+        ? -Infinity
+        : q[i].reduce((s, x, d) => s + x * key[d], 0) / scale,
+    );
+    const max = Math.max(...scores),
+      exps = scores.map((x) => Math.exp(x - max)),
+      sum = exps.reduce((a, b) => a + b, 0);
+    const row = exps.map((x) => x / sum);
+    weights.push(row);
+    output.push(
+      v[0].map((_, d) => row.reduce((s, w, j) => s + w * v[j][d], 0)),
+    );
+  }
+  return { weights, output };
+}
+// @minimax
+function solve(tree) {
+  function search(node, maximizing, alpha, beta) {
+    if (typeof node === "number") return node;
+    let best = maximizing ? -Infinity : Infinity;
+    for (const child of node) {
+      const value = search(child, !maximizing, alpha, beta);
+      best = maximizing ? Math.max(best, value) : Math.min(best, value);
+      if (maximizing) alpha = Math.max(alpha, best);
+      else beta = Math.min(beta, best);
+      if (alpha >= beta) break;
+    }
+    return best;
+  }
+  return search(tree, true, -Infinity, Infinity);
+}

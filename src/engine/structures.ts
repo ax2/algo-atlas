@@ -45,6 +45,7 @@ export function structures(id: string, raw: string): Trace {
   const add = (title: string, detail: string, extra: Partial<Frame> = {}) =>
     record(title, detail, { inputState, ...extra });
   let result: unknown;
+  let source: Trace["source"], output: Trace["output"];
   let kind: Trace["kind"] = "cells";
   if (id === "trie") {
     const words = raw.split(/[,，\s]+/).filter(Boolean);
@@ -148,6 +149,11 @@ export function structures(id: string, raw: string): Trace {
         p.keys.splice(i, 0, v);
         return;
       }
+      add(
+        "选择 B 树子区间",
+        `待插入 ${v}；在键 [${p.keys}] 中定位第 ${i + 1} 个孩子，下降前检查是否已满。`,
+        picture(),
+      );
       if (p.children[i].keys.length === 3) {
         split(p, i);
         if (v > p.keys[i]) i++;
@@ -179,6 +185,7 @@ export function structures(id: string, raw: string): Trace {
           ? [2, 4, 6, 8, 10, 12, 14, 16]
           : [1, 3, 5, 7, 9, 11, 13, 15],
       target = raw === "1" ? 14 : 11;
+    source = [...a.map(String), `查找目标=${target}`];
     const heights = a.map((_, i) => (i % 4 === 3 ? 3 : i % 2 === 1 ? 2 : 1));
     const nodes: Node[] = [],
       edges: Edge[] = [];
@@ -228,6 +235,11 @@ export function structures(id: string, raw: string): Trace {
       );
     }
     result = a[pos];
+    add(
+      "查找完成",
+      `在底层命中 ${target}。固定分层方便复现，本实验没有演示随机建层。`,
+      { nodes, edges },
+    );
     kind = "graph";
   } else {
     const a = numbers(raw);
@@ -402,6 +414,11 @@ export function structures(id: string, raw: string): Trace {
       let root: Tree | undefined;
       const insert = (p: Tree | undefined, v: number): Tree => {
         if (!p) return { value: v, height: 1 };
+        add(
+          "比较当前搜索树结点",
+          `${v} 与 ${p.value} 比较：${v === p.value ? "重复键，忽略" : v < p.value ? "进入左子树" : "进入右子树"}。`,
+          treePicture(root),
+        );
         if (v < p.value) p.left = insert(p.left, v);
         if (v > p.value) p.right = insert(p.right, v);
         return p;
@@ -450,6 +467,42 @@ export function structures(id: string, raw: string): Trace {
       }
       kind = "graph";
       result = h;
+      const built = [...h],
+        minimum = h[0],
+        last = h.pop()!;
+      h[0] = last;
+      add(
+        "弹出最小值，末尾补根",
+        `取出 ${minimum}；用最后元素 ${last} 补到根，完全树形状不变，接着恢复堆序。`,
+        picture(),
+      );
+      let at = 0;
+      while (at * 2 + 1 < h.length) {
+        let child = at * 2 + 1;
+        if (child + 1 < h.length && h[child + 1] < h[child]) child++;
+        add(
+          "比较父结点与较小孩子",
+          `${h[at]} 与 ${h[child]} 比较；只需沿更小孩子方向继续。`,
+          picture(),
+        );
+        if (h[at] <= h[child]) break;
+        [h[at], h[child]] = [h[child], h[at]];
+        at = child;
+        add("下沉修复堆序", "交换后继续检查新的父子关系。", picture());
+      }
+      add(
+        "弹出操作完成",
+        `已返回最小值 ${minimum}；剩余堆仍满足父值不大于孩子。`,
+        picture(),
+      );
+      output = {
+        title: "建堆与弹出结果",
+        summary: [
+          `建成的小根堆：${built.join(", ")}`,
+          `弹出的最小值：${minimum}`,
+          `弹出后堆数组：${h.join(", ")}`,
+        ],
+      };
     } else if (id === "union-find") {
       const n = Math.min(a.length, 10),
         parent = range(n),
@@ -470,6 +523,7 @@ export function structures(id: string, raw: string): Trace {
         return parent[x];
       };
       for (let i = 0; i < a.length - 1; i++) {
+        feed(a, i);
         const u = a[i] % n,
           v = a[i + 1] % n;
         let x = find(u),
@@ -495,6 +549,7 @@ export function structures(id: string, raw: string): Trace {
       const t = Array(a.length + 1).fill(0);
       for (let i = 0; i < a.length; i++)
         for (let j = i + 1; j < t.length; j += j & -j) {
+          feed(a, i);
           t[j] += a[i];
           add(
             "更新包含该点的区间",
@@ -519,6 +574,10 @@ export function structures(id: string, raw: string): Trace {
     } else if (id === "segment-tree") {
       const nodes: Node[] = [],
         edges: Edge[] = [];
+      const intervals = new Map<
+        string,
+        { l: number; r: number; sum: number }
+      >();
       const build = (
         l: number,
         r: number,
@@ -538,6 +597,7 @@ export function structures(id: string, raw: string): Trace {
         if (l === r) {
           feed(a, l);
           nodes[index].label = String(a[l]);
+          intervals.set(key, { l, r, sum: a[l] });
           add("叶子保存单点值", `区间 [${l},${r}] = ${a[l]}。`, {
             nodes,
             edges,
@@ -551,6 +611,7 @@ export function structures(id: string, raw: string): Trace {
           build(l, m, d + 1, key + "L", x1, x) +
           build(m + 1, r, d + 1, key + "R", x, x2);
         nodes[index].label = `${l}–${r}: ${sum}`;
+        intervals.set(key, { l, r, sum });
         inputState = {
           source: a.map(String),
           current: `区间 [${l},${r}]`,
@@ -562,6 +623,40 @@ export function structures(id: string, raw: string): Trace {
         return sum;
       };
       result = build(0, a.length - 1, 0, "root", 5, 675);
+      const L = 1,
+        R = a.length - 1;
+      const query = (key: string): number => {
+        const { l, r, sum } = intervals.get(key)!;
+        const disjoint = r < L || R < l,
+          full = L <= l && r <= R;
+        add(
+          disjoint
+            ? "查询跳过不相交区间"
+            : full
+              ? "查询整段命中"
+              : "查询拆成两个子区间",
+          `查询 [${L},${R}]，当前 [${l},${r}]：${disjoint ? "返回 0" : full ? `直接取区间和 ${sum}` : "继续递归孩子，将两边答案相加"}。`,
+          {
+            nodes: nodes.map((n) => ({
+              ...n,
+              color: n.id === key ? "orange" : undefined,
+            })),
+            edges,
+            checkpoint: full,
+          },
+        );
+        return disjoint ? 0 : full ? sum : query(key + "L") + query(key + "R");
+      };
+      const answer = query("root");
+      add(
+        "区间查询完成",
+        `[${L},${R}] 的和为 ${answer}；原树和原数组都没有被修改。`,
+        { nodes, edges },
+      );
+      output = {
+        title: "线段树查询结果",
+        summary: [`原数组总和：${result}`, `查询闭区间 [${L},${R}]：${answer}`],
+      };
       kind = "graph";
     } else throw new Error(`未知结构实验 ${id}`);
   }
@@ -576,6 +671,8 @@ export function structures(id: string, raw: string): Trace {
     frames,
     kind,
     result,
+    source,
+    output,
     caption: ["avl", "red-black", "b-tree", "skip-list"].includes(id)
       ? "机制实验：可切换精选输入，逐步观察维护规则。构建与维护过程展示完整结构。"
       : "操作实验：帧是独立快照，可安全回退。示意空间与真实内存布局不同。",

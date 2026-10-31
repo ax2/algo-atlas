@@ -1,0 +1,146 @@
+# @bubble
+def solve(values):
+    a = list(values)
+    for end in range(len(a) - 1, 0, -1):
+        changed = False
+        for j in range(end):
+            if a[j] > a[j + 1]:
+                a[j], a[j + 1] = a[j + 1], a[j]
+                changed = True
+        if not changed:
+            break
+    return a
+# @selection
+def solve(values):
+    a = list(values)
+    for i in range(len(a)):
+        m = i
+        for j in range(i + 1, len(a)):
+            if a[j] < a[m]:
+                m = j
+        a[i], a[m] = a[m], a[i]
+    return a
+# @insertion
+def solve(values):
+    a = list(values)
+    for i in range(1, len(a)):
+        value, j = a[i], i
+        while j > 0 and a[j - 1] > value:
+            a[j] = a[j - 1]
+            j -= 1
+        a[j] = value
+    return a
+# @quick
+def solve(values):
+    a = list(values)
+    def sort(lo, hi):
+        if lo >= hi:
+            return
+        pivot, i = a[hi], lo
+        for j in range(lo, hi):
+            if a[j] < pivot:
+                a[i], a[j] = a[j], a[i]
+                i += 1
+        a[i], a[hi] = a[hi], a[i]
+        sort(lo, i - 1)
+        sort(i + 1, hi)
+    sort(0, len(a) - 1)
+    return a
+# @merge
+def solve(a):
+    if len(a) < 2:
+        return list(a)
+    mid = len(a) // 2
+    left, right = solve(a[:mid]), solve(a[mid:])
+    out, i, j = [], 0, 0
+    while i < len(left) and j < len(right):
+        if left[i] <= right[j]:
+            out.append(left[i])
+            i += 1
+        else:
+            out.append(right[j])
+            j += 1
+    return out + left[i:] + right[j:]
+# @heap-sort
+def solve(values):
+    a = list(values)
+    def down(i, n):
+        while 2 * i + 1 < n:
+            child = 2 * i + 1
+            if child + 1 < n and a[child + 1] > a[child]:
+                child += 1
+            if a[i] >= a[child]:
+                break
+            a[i], a[child] = a[child], a[i]
+            i = child
+    for i in range(len(a) // 2 - 1, -1, -1):
+        down(i, len(a))
+    for end in range(len(a) - 1, 0, -1):
+        a[0], a[end] = a[end], a[0]
+        down(0, end)
+    return a
+# @counting
+def solve(a):
+    if not a:
+        return []
+    count = [0] * (max(a) + 1)
+    for x in a:
+        count[x] += 1
+    return [x for x, count_x in enumerate(count) for _ in range(count_x)]
+# @radix
+def solve(values):
+    a, place = list(values), 1
+    maximum = max(a, default=0)
+    while place <= maximum:
+        buckets = [[] for _ in range(10)]
+        for x in a:
+            buckets[(x // place) % 10].append(x)
+        a = [x for bucket in buckets for x in bucket]
+        place *= 10
+    return a
+# @shell
+def solve(values):
+    a, gap = list(values), len(values) // 2
+    while gap > 0:
+        for i in range(gap, len(a)):
+            x, j = a[i], i
+            while j >= gap and a[j - gap] > x:
+                a[j] = a[j - gap]
+                j -= gap
+            a[j] = x
+        gap //= 2
+    return a
+# @linear-search
+def solve(a, target):
+    for i, value in enumerate(a):
+        if value == target:
+            return i
+    return -1
+# @binary-search
+def solve(a, target):
+    lo, hi = 0, len(a)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if a[mid] < target:
+            lo = mid + 1
+        else:
+            hi = mid
+    return lo if lo < len(a) and a[lo] == target else -1
+# @quickselect
+def solve(values, k):
+    if not 0 <= k < len(values):
+        raise ValueError("k out of range")
+    a, lo, hi = list(values), 0, len(values) - 1
+    while lo <= hi:
+        pivot, p = a[hi], lo
+        for j in range(lo, hi):
+            if a[j] < pivot:
+                a[p], a[j] = a[j], a[p]
+                p += 1
+        a[p], a[hi] = a[hi], a[p]
+        if p == k:
+            return a[p]
+        if p < k:
+            lo = p + 1
+        else:
+            hi = p - 1

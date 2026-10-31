@@ -34,6 +34,7 @@ import type { LearningData } from "./services/learning";
 import { Experiment } from "./components/Experiment";
 import type { ExperimentState } from "./components/Experiment";
 import { Principles, Complexity, Practice } from "./components/LessonPanels";
+import { Implementation } from "./components/Implementation";
 import { Catalog } from "./components/Catalog";
 import { Learning } from "./components/Learning";
 import { Cases } from "./components/Cases";
@@ -53,7 +54,8 @@ const tabs = [
   ["experiment", "图解实验", ChartNoAxesCombined],
   ["principles", "原理与历史", BookOpen],
   ["complexity", "复杂度分析", ChartNoAxesCombined],
-  ["practice", "代码与练习", Braces],
+  ["implementation", "多语言实现", Braces],
+  ["practice", "课后练习", GraduationCap],
 ] as const;
 export default function App() {
   const [route, setRoute] = useState(readRoute),
@@ -257,7 +259,13 @@ export default function App() {
             className={
               route.view === "practice" ? "nav-item active" : "nav-item"
             }
-            onClick={() => navigate("practice")}
+            onClick={() =>
+              navigate(
+                "practice",
+                "",
+                route.view === "lesson" ? `topic=${topic.id}` : "",
+              )
+            }
           >
             <GraduationCap size={20} />
             练习库<span>{problems.length}</span>
@@ -473,15 +481,19 @@ export default function App() {
                   </div>
                 </div>
               </header>
-              <div className="lesson-tabs" role="tablist" aria-label="课程章节">
+              <nav className="lesson-tabs" aria-label="课程章节">
                 {tabs.map(([id, label, Icon]) => (
                   <button
-                    role="tab"
-                    aria-selected={tab === id}
-                    aria-controls="lesson-panel"
+                    aria-current={tab === id ? "location" : undefined}
+                    aria-controls={`section-${id}`}
                     id={`tab-${id}`}
                     key={id}
-                    onClick={() => setTab(id)}
+                    onClick={() => {
+                      setTab(id);
+                      document
+                        .getElementById(`section-${id}`)
+                        ?.scrollIntoView({ block: "start" });
+                    }}
                     className={tab === id ? "active" : ""}
                   >
                     <Icon size={21} />
@@ -503,30 +515,69 @@ export default function App() {
                   <CheckCircle2 size={17} />
                   <span>{complete ? "已掌握" : "标记掌握"}</span>
                 </button>
-              </div>
-              <div
-                id="lesson-panel"
-                role="tabpanel"
-                aria-labelledby={`tab-${tab}`}
-                key={topic.id + route.params.toString()}
-              >
-                {tab === "experiment" ? (
+              </nav>
+              <div id="lesson-panel" key={topic.id + route.params.toString()}>
+                <section
+                  id="section-experiment"
+                  className="lesson-section"
+                  aria-labelledby="heading-experiment"
+                >
+                  <h2 id="heading-experiment" className="lesson-section-title">
+                    <span>01</span> 图解实验 <small>输入 → 状态 → 结果</small>
+                  </h2>
                   <Experiment
                     topic={topic}
                     initial={experiment.current}
                     onState={onExperiment}
                   />
-                ) : tab === "principles" ? (
+                </section>
+                <section
+                  id="section-principles"
+                  className="lesson-section"
+                  aria-labelledby="heading-principles"
+                >
+                  <h2 id="heading-principles" className="lesson-section-title">
+                    <span>02</span> 原理与历史
+                  </h2>
                   <Principles topic={topic} />
-                ) : tab === "complexity" ? (
+                </section>
+                <section
+                  id="section-complexity"
+                  className="lesson-section"
+                  aria-labelledby="heading-complexity"
+                >
+                  <h2 id="heading-complexity" className="lesson-section-title">
+                    <span>03</span> 复杂度分析
+                  </h2>
                   <Complexity topic={topic} />
-                ) : (
+                </section>
+                <section
+                  id="section-implementation"
+                  className="lesson-section"
+                  aria-labelledby="heading-implementation"
+                >
+                  <h2
+                    id="heading-implementation"
+                    className="lesson-section-title"
+                  >
+                    <span>04</span> 多语言实现
+                  </h2>
+                  <Implementation topic={topic} notify={notify} />
+                </section>
+                <section
+                  id="section-practice"
+                  className="lesson-section"
+                  aria-labelledby="heading-practice"
+                >
+                  <h2 id="heading-practice" className="lesson-section-title">
+                    <span>05</span> 课后练习
+                  </h2>
                   <Practice
                     topic={topic}
                     onComplete={markComplete}
                     notify={notify}
                   />
-                )}
+                </section>
               </div>
             </>
           ) : route.view === "catalog" ? (

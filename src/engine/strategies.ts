@@ -4,6 +4,7 @@ export function strategies(id: string, raw: string): Trace {
   const { frames, add } = recorder();
   let result: unknown,
     kind: Trace["kind"] = "cells";
+  let source: Trace["source"];
   if (id === "lcs" || id === "edit-distance") {
     const [a, b] = textPair(raw, 12),
       d = range(a.length + 1).map(() => Array(b.length + 1).fill(0));
@@ -64,6 +65,10 @@ export function strategies(id: string, raw: string): Trace {
             ],
       W = raw === "1" ? 8 : 7,
       d = range(items.length + 1).map(() => Array(W + 1).fill(0));
+    source = [
+      `容量 W=${W}`,
+      ...items.map(([w, v], i) => `物品${i + 1}：重${w} / 值${v}`),
+    ];
     const base = {
       rowLabels: ["无物品", ...items.map(([w, v]) => `重${w}/值${v}`)],
       colLabels: range(W + 1).map(String),
@@ -102,6 +107,12 @@ export function strategies(id: string, raw: string): Trace {
     const n = 4,
       queens: number[] = [],
       solutions: number[][] = [];
+    source = [
+      "4×4 棋盘",
+      "每行 1 个皇后",
+      "列与两条对角线不能冲突",
+      raw === "1" ? "按列从右向左尝试" : "按列从左向右尝试",
+    ];
     const board = () =>
       range(n).map((r) => range(n).map((c) => (queens[r] === c ? "♛" : "·")));
     add("4 皇后搜索", "每行一个皇后，列与两条对角线都不能冲突。", {
@@ -170,6 +181,7 @@ export function strategies(id: string, raw: string): Trace {
             [5, 9],
             [8, 9],
           ];
+    source = intervals.map(([l, r]) => `[${l},${r})`);
     intervals.sort((a, b) => a[1] - b[1]);
     let end = -Infinity;
     const chosen: number[][] = [];
@@ -199,32 +211,80 @@ export function strategies(id: string, raw: string): Trace {
     });
     result = chosen;
     kind = "matrix";
-  } else if (id === "fibonacci" || id === "coin-change") {
-    const n = numbers(raw, 1, 1, id === "fibonacci" ? 20 : 24)[0];
+  } else if (id === "fibonacci") {
+    const n = numbers(raw, 1, 1, 20)[0];
     if (n < 2) throw new Error("请输入至少 2。");
-    const d = Array(n + 1).fill(id === "fibonacci" ? 0 : Infinity);
-    d[0] = 0;
-    if (id === "fibonacci") d[1] = 1;
+    const cache: (number | undefined)[] = Array(n + 1).fill(undefined),
+      stack: number[] = [];
+    cache[0] = 0;
+    cache[1] = 1;
+    source = [`n=${n}`, "F(0)=0", "F(1)=1"];
+    const snapshot = () => ({
+      values: cache.map((x) => x ?? 0),
+      labels: cache.map((x, i) => `${i}:${x ?? "?"}`),
+      worklists: [
+        {
+          name: "递归调用栈 · 栈顶在左",
+          items: [...stack].reverse().map((k) => `F(${k})`),
+        },
+        {
+          name: "已缓存的子问题",
+          items: cache.flatMap((v, i) =>
+            v === undefined ? [] : [`F(${i})=${v}`],
+          ),
+        },
+      ],
+    });
+    add("准备记忆化缓存", "仅 F(0)、F(1) 已知；问号代表未计算。", snapshot());
+    const fib = (k: number): number => {
+      stack.push(k);
+      add("进入递归调用", `请求 F(${k})，先检查缓存。`, snapshot());
+      if (cache[k] !== undefined) {
+        add(
+          "命中缓存，直接返回",
+          `F(${k})=${cache[k]} 已计算，无需再次展开子树。`,
+          { ...snapshot(), checkpoint: true },
+        );
+      } else {
+        const left = fib(k - 1),
+          right = fib(k - 2);
+        cache[k] = left + right;
+        add(
+          "合并并写入缓存",
+          `F(${k})=${left}+${right}=${cache[k]}，以后可直接复用。`,
+          { ...snapshot(), checkpoint: true },
+        );
+      }
+      stack.pop();
+      add(
+        "返回上一层调用",
+        `F(${k}) 返回 ${cache[k]}，当前调用出栈。`,
+        snapshot(),
+      );
+      return cache[k]!;
+    };
+    result = fib(n);
     add(
-      "设定边界",
-      id === "fibonacci"
-        ? "F(0)=0，F(1)=1。"
-        : "dp[0]=0，其余金额暂不可达；面额为 1、3、4。",
-      {
-        values: d.map((x) => (Number.isFinite(x) ? x : 0)),
-        labels: d.map((x) => (Number.isFinite(x) ? String(x) : "∞")),
-      },
+      "记忆化计算完成",
+      `F(${n})=${result}；每个非边界状态只计算一次，缓存与递归栈都是 O(n)。`,
+      snapshot(),
     );
-    for (let i = id === "fibonacci" ? 2 : 1; i <= n; i++) {
-      if (id === "fibonacci") d[i] = d[i - 1] + d[i - 2];
-      else
-        for (const coin of [1, 3, 4])
-          if (i >= coin) d[i] = Math.min(d[i], d[i - coin] + 1);
+  } else if (id === "coin-change") {
+    const n = numbers(raw, 1, 1, 24)[0];
+    if (n < 2) throw new Error("请输入至少 2。");
+    source = [`目标金额=${n}`, "硬币：1、3、4（无限供应）"];
+    const d = Array(n + 1).fill(Infinity);
+    d[0] = 0;
+    add("设定边界", "dp[0]=0，其余金额暂不可达；面额为 1、3、4。", {
+      values: d.map((x) => (Number.isFinite(x) ? x : 0)),
+      labels: d.map((x) => (Number.isFinite(x) ? String(x) : "∞")),
+    });
+    for (let i = 1; i <= n; i++) {
+      for (const coin of [1, 3, 4])
+        if (i >= coin) d[i] = Math.min(d[i], d[i - coin] + 1);
       add(
         "复用已知子问题",
-        id === "fibonacci"
-          ? `F(${i}) = ${d[i - 1]} + ${d[i - 2]} = ${d[i]}。`
-          : `dp[${i}] = ${d[i]}；尝试最后一枚为 1、3、4 后的最优结果。`,
+        `dp[${i}] = ${d[i]}；尝试最后一枚为 1、3、4 后的最优结果。`,
         {
           values: d.map((x) => (Number.isFinite(x) ? x : 0)),
           labels: d.map((x) => (Number.isFinite(x) ? String(x) : "∞")),
@@ -297,7 +357,7 @@ export function strategies(id: string, raw: string): Trace {
         if (i >= k) sum -= a[i - k];
         if (i >= k - 1) best = Math.max(best, sum);
         add(
-          "移动长度为 3 的窗口",
+          `移动长度为 ${k} 的窗口`,
           `加入 ${a[i]}${i >= k ? `，移出 ${a[i - k]}` : ""}，当前和 ${sum}。`,
           {
             values: a,
@@ -321,18 +381,36 @@ export function strategies(id: string, raw: string): Trace {
             values: a,
             active: [j, i],
             stats: { 栈: stack.map((k) => a[k]).join(", ") || "∅" },
+            worklists: [
+              {
+                name: "单调栈 · 栈顶在左（下标:值）",
+                items: [...stack].reverse().map((k) => `${k}:${a[k]}`),
+              },
+            ],
           });
         }
         stack.push(i);
         add("维护单调递减栈", `入栈 ${a[i]}，等待后面的更大元素。`, {
           values: a,
           active: stack,
+          worklists: [
+            {
+              name: "单调栈 · 栈顶在左（下标:值）",
+              items: [...stack].reverse().map((k) => `${k}:${a[k]}`),
+            },
+          ],
         });
       }
       result = next;
       add("输出下一更大值", "−1 表示右侧不存在更大的值。", {
         values: next,
         labels: next.map(String),
+        worklists: [
+          {
+            name: "仍未匹配的下标 · 右侧已无更大元素",
+            items: [...stack].reverse().map((k) => `${k}:${a[k]}`),
+          },
+        ],
       });
     } else if (id === "lis") {
       const d = Array(a.length).fill(1);
@@ -361,6 +439,7 @@ export function strategies(id: string, raw: string): Trace {
     frames,
     kind,
     result,
+    source,
     caption:
       "动态规划的数值来自实际状态转移。复杂度分析不包含为了回放而保存的帧副本。",
   };

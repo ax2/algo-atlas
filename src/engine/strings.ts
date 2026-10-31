@@ -1,9 +1,10 @@
 import { recorder, range, textPair } from "./model";
-import type { Node, Edge, Trace } from "./model";
+import type { Node, Edge, Trace, Frame } from "./model";
 export function strings(id: string, raw: string): Trace {
   const { frames, add } = recorder();
   let result: unknown,
     kind: Trace["kind"] = "cells";
+  let source: Trace["source"], output: Trace["output"];
   if (id === "suffix-array") {
     if (!/^[a-zA-Z]{1,12}$/.test(raw))
       throw new Error("请输入 1–12 个英文字母。");
@@ -47,6 +48,11 @@ export function strings(id: string, raw: string): Trace {
       freq,
     }));
     let seq = 0;
+    const codes: Record<string, string> = {};
+    let pathIds: string[] = [],
+      encoded = "",
+      decoded = "";
+    source = [`原文：${raw}`, ...[...freq].map(([c, f]) => `${c} × ${f}`)];
     const picture = () => {
       const nodes: Node[] = [],
         edges: Edge[] = [];
@@ -56,13 +62,24 @@ export function strings(id: string, raw: string): Trace {
           label: `${p.char || "Σ"}:${p.freq}`,
           x: (l + r) / 2,
           y: 25 + depth * 55,
+          color: pathIds.includes(p.id) ? "orange" : undefined,
         });
         if (p.left) {
-          edges.push({ from: p.id, to: p.left.id, label: "0" });
+          edges.push({
+            from: p.id,
+            to: p.left.id,
+            label: "0",
+            active: pathIds.includes(p.id) && pathIds.includes(p.left.id),
+          });
           go(p.left, l, (l + r) / 2, depth + 1);
         }
         if (p.right) {
-          edges.push({ from: p.id, to: p.right.id, label: "1" });
+          edges.push({
+            from: p.id,
+            to: p.right.id,
+            label: "1",
+            active: pathIds.includes(p.id) && pathIds.includes(p.right.id),
+          });
           go(p.right, (l + r) / 2, r, depth + 1);
         }
       };
@@ -71,7 +88,38 @@ export function strings(id: string, raw: string): Trace {
       );
       return { nodes, edges };
     };
-    add("统计字符频率", "每个符号是一棵带权叶树。", picture());
+    const emitH = (title: string, detail: string, extra: Partial<Frame> = {}) =>
+      add(title, detail, {
+        ...picture(),
+        worklists: [
+          {
+            name: "候选森林 · 线性选最小（权重升序）",
+            items: forest
+              .slice()
+              .sort((a, b) => a.freq - b.freq)
+              .map((p) => `${p.char || p.id}:${p.freq}`),
+          },
+        ],
+        tables: [
+          {
+            title: "逐步生成的码表",
+            columns: ["字符", "频次", "编码"],
+            rows: [...freq].map(([ch, count]) => [
+              ch,
+              count,
+              codes[ch] ?? "待生成",
+            ]),
+          },
+        ],
+        stats: {
+          字符数: raw.length,
+          字符种类: freq.size,
+          已生成码字: Object.keys(codes).length,
+          编码位数: encoded.length,
+        },
+        ...extra,
+      });
+    emitH("统计字符频率", "原文和频率始终保留。每个符号先成为一棵带权叶树。");
     const takeMin = () => {
       let m = 0;
       for (let i = 1; i < forest.length; i++)
@@ -80,14 +128,14 @@ export function strings(id: string, raw: string): Trace {
     };
     while (forest.length > 1) {
       const candidates = forest.slice().sort((a, b) => a.freq - b.freq);
-      add(
+      emitH(
         "选择下一对候选",
         `即将合并 ${candidates[0].char || candidates[0].id}:${candidates[0].freq} 与 ${candidates[1].char || candidates[1].id}:${candidates[1].freq}。`,
         {
           ...picture(),
           checkpoint: true,
           inputState: {
-            source: [...freq].map(([c, f]) => `${c}:${f}`),
+            source,
             current: candidates
               .slice(0, 2)
               .map((p) => `${p.char || p.id}:${p.freq}`)
@@ -108,26 +156,93 @@ export function strings(id: string, raw: string): Trace {
         left,
         right,
       });
-      add(
+      emitH(
         "合并最小的两棵树",
         `${left.freq} + ${right.freq} = ${left.freq + right.freq}；教学线性选择最小，未使用优先队列。`,
-        picture(),
       );
     }
-    const codes: Record<string, string> = {};
-    const walk = (p: H, s: string) => {
-      if (p.char) codes[p.char] = s || "0";
-      if (p.left) walk(p.left, s + "0");
-      if (p.right) walk(p.right, s + "1");
+    const walk = (p: H, s: string, ancestors: string[]) => {
+      pathIds = [...ancestors, p.id];
+      if (p.char) {
+        codes[p.char] = s || "0";
+        emitH(
+          "抵达叶子，记录码字",
+          `${p.char} 的路径编码为 ${codes[p.char]}。${s ? "左边为 0，右边为 1；只有叶子代表字符，所以码字不会是另一码字的前缀。" : "只有一种字符，约定编码为 0，保留重复次数。"}`,
+          { checkpoint: true },
+        );
+      } else
+        emitH(
+          "沿树生成前缀",
+          `当前路径 ${s || "根（空前缀）"}。先走左边追加 0，再走右边追加 1。`,
+        );
+      if (p.left) walk(p.left, s + "0", [...ancestors, p.id]);
+      if (p.right) walk(p.right, s + "1", [...ancestors, p.id]);
     };
-    walk(forest[0], "");
+    walk(forest[0], "", []);
+    pathIds = [];
+    for (let i = 0; i < raw.length; i++) {
+      encoded += codes[raw[i]];
+      emitH(
+        "逐字符编码原文",
+        `${raw[i]} → ${codes[raw[i]]}；累计位串：${encoded}`,
+        {
+          inputState: {
+            source,
+            current: `${i}: ${raw[i]}`,
+            pending: [...raw.slice(i + 1)],
+            processed: i + 1,
+            label: "原文从左到右编码",
+          },
+          worklists: [{ name: "已经生成的位串", items: [encoded] }],
+        },
+      );
+    }
+    let node = forest[0],
+      bitPath = [node.id];
+    for (let i = 0; i < encoded.length; i++) {
+      if (!forest[0].char) {
+        node = encoded[i] === "0" ? node.left! : node.right!;
+        bitPath.push(node.id);
+      }
+      pathIds = bitPath;
+      const char = node.char;
+      if (char) decoded += char;
+      emitH(
+        char ? "命中叶子，输出字符" : "读取一位，沿边解码",
+        `第 ${i + 1} 位 ${encoded[i]}；${char ? `输出 ${char}，随后回到树根。已解码：${decoded}` : "尚未到叶子，继续读取下一位。"}`,
+        {
+          worklists: [
+            {
+              name: "待解码位串（下一位在左）",
+              items: [encoded.slice(i + 1) || "已读完"],
+            },
+            { name: "已经恢复的原文", items: [decoded || "尚未输出"] },
+          ],
+        },
+      );
+      if (char) {
+        node = forest[0];
+        bitPath = [node.id];
+      }
+    }
+    pathIds = [];
     result = codes;
-    add(
-      "生成前缀编码",
-      Object.entries(codes)
-        .map(([c, b]) => `${c}=${b}`)
-        .join("；"),
-      picture(),
+    output = {
+      title: "哈夫曼编码与解码结果",
+      columns: ["字符", "频次", "码字"],
+      rows: [...freq].map(([c, f]) => [c, f, codes[c]]),
+      summary: [
+        `原文：${raw}`,
+        `编码位串：${encoded}`,
+        `解码原文：${decoded}`,
+        `往返校验：${decoded === raw ? "一致" : "失败"}`,
+        `编码 ${encoded.length} 位；按 ASCII 每字符 8 位比较原文为 ${raw.length * 8} 位。未计码表、长度信息和封装开销，不代表实际文件压缩率。`,
+      ],
+    };
+    emitH(
+      "编码与解码完成",
+      `码表、${encoded.length} 位编码结果及恢复原文均见输出区。往返校验：${decoded === raw ? "一致" : "失败"}。`,
+      { checkpoint: true },
     );
     kind = "graph";
   } else {
@@ -291,6 +406,8 @@ export function strings(id: string, raw: string): Trace {
     frames,
     kind,
     result,
+    source,
+    output,
     caption:
       "字符下标从 0 开始。本版本实验输入限制为英文字母，避免混淆字节、码点和字素。",
   };

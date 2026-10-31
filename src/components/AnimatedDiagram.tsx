@@ -26,11 +26,13 @@ function EnergyEdge({
   a,
   b,
   options,
+  curved = false,
 }: {
   edge: Edge;
   a: Node;
   b: Node;
   options: MotionOptions;
+  curved?: boolean;
 }) {
   const { duration, still, tick, glow } = options,
     dx = b.x - a.x,
@@ -52,7 +54,23 @@ function EnergyEdge({
     y1 = a.y + (dy / len) * startRadius,
     x2 = b.x - (dx / len) * endRadius,
     y2 = b.y - (dy / len) * endRadius;
-  const d = `M ${x1} ${y1} L ${x2} ${y2}`,
+  // Reciprocal directed edges bend to opposite sides in their own direction.
+  const bend = curved ? 42 : 0,
+    cx = (x1 + x2) / 2 - (dy / len) * bend,
+    cy = (y1 + y2) / 2 + (dx / len) * bend;
+  const point = (t: number) => ({
+    x: (1 - t) ** 2 * x1 + 2 * (1 - t) * t * cx + t * t * x2,
+    y: (1 - t) ** 2 * y1 + 2 * (1 - t) * t * cy + t * t * y2,
+  });
+  const middle = point(0.5);
+  const particles = Array.from({ length: 17 }, (_, i) => {
+    const t = i / 16,
+      eased = t * t * t * (t * (t * 6 - 15) + 10);
+    return point(eased);
+  });
+  const d = curved
+      ? `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`
+      : `M ${x1} ${y1} L ${x2} ${y2}`,
     transition = { duration, ease: travel };
   return (
     <motion.g
@@ -108,7 +126,7 @@ function EnergyEdge({
           animate={{
             x: x2,
             y: y2,
-            rotate: (Math.atan2(dy, dx) * 180) / Math.PI,
+            rotate: (Math.atan2(y2 - cy, x2 - cx) * 180) / Math.PI,
             opacity: 1,
           }}
           exit={{ opacity: 0 }}
@@ -126,10 +144,14 @@ function EnergyEdge({
           fill={edge.active ? "#effff9" : "var(--blue)"}
           filter={`url(#${glow})`}
           initial={{ cx: x1, cy: y1, opacity: 0 }}
-          animate={{ cx: [x1, x2], cy: [y1, y2], opacity: [0, 1, 1, 0] }}
+          animate={{
+            cx: particles.map((p) => p.x),
+            cy: particles.map((p) => p.y),
+            opacity: [0, 1, 1, 0],
+          }}
           transition={{
             duration: duration * 1.05,
-            ease: travel,
+            ease: "linear",
             opacity: { times: [0, 0.12, 0.82, 1], duration: duration * 1.05 },
           }}
         />
@@ -139,8 +161,8 @@ function EnergyEdge({
           className="edge-weight"
           initial={still ? false : { opacity: 0, y: 5 }}
           animate={{
-            x: (a.x + b.x) / 2 + 9,
-            y: (a.y + b.y) / 2 - 9,
+            x: middle.x + (curved ? (-dy / len) * 9 : 9),
+            y: middle.y + (curved ? (dx / len) * 9 : -9),
             opacity: 1,
           }}
           exit={{ opacity: 0, y: -8 }}
@@ -199,6 +221,12 @@ function GraphScene({
               a={a}
               b={b}
               options={options}
+              curved={
+                !!e.directed &&
+                !!frame.edges?.some(
+                  (other) => other.from === e.to && other.to === e.from,
+                )
+              }
             />
           ) : null;
         })}

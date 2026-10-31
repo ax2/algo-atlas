@@ -1,11 +1,12 @@
 import { numbers, range, recorder } from "./model";
-import type { Trace } from "./model";
+import type { Trace, Frame } from "./model";
 
 export function sorting(id: string, raw: string, target = 5): Trace {
   const a = numbers(raw);
   let comparisons = 0,
     writes = 0;
   const { frames, add } = recorder(a);
+  let worklists: Frame["worklists"];
   const emit = (
     title: string,
     detail: string,
@@ -19,6 +20,7 @@ export function sorting(id: string, raw: string, target = 5): Trace {
       settled,
       pivot,
       stats: { 比较: comparisons, 写入: writes },
+      worklists,
     });
   const swap = (i: number, j: number) => {
     if (i !== j) {
@@ -127,6 +129,9 @@ export function sorting(id: string, raw: string, target = 5): Trace {
       emit("处理间隔", `gap=${gap}，对每个间隔子序列执行插入。`);
       for (let i = gap; i < a.length; i++) {
         const v = a[i];
+        worklists = [
+          { name: "暂存的待插入值（已从数组逻辑上取出）", items: [String(v)] },
+        ];
         let j = i;
         while (j >= gap) {
           comparisons++;
@@ -141,6 +146,7 @@ export function sorting(id: string, raw: string, target = 5): Trace {
           emit("向后移动", "为待插入值腾出空间。", [j, j + gap]);
         }
         a[j] = v;
+        worklists = undefined;
         writes++;
         emit("插入目标位置", `将 ${v} 放在 ${j}。`, [j]);
       }
@@ -229,6 +235,10 @@ export function sorting(id: string, raw: string, target = 5): Trace {
             ? left[i++]
             : right[j++];
         writes++;
+        worklists = [
+          { name: "左侧缓冲区 · 尚未写回", items: left.slice(i).map(String) },
+          { name: "右侧缓冲区 · 尚未写回", items: right.slice(j).map(String) },
+        ];
         emit("合并两个有序段", `写入位置 ${k}，相等时先取左侧，保持稳定性。`, [
           k,
         ]);
@@ -271,6 +281,14 @@ export function sorting(id: string, raw: string, target = 5): Trace {
     const counts = Array(Math.max(...a) + 1).fill(0);
     for (let i = 0; i < a.length; i++) {
       counts[a[i]]++;
+      worklists = [
+        {
+          name: "计数桶 · 值:频次",
+          items: counts.flatMap((count, value) =>
+            count ? [`${value}:${count}`] : [],
+          ),
+        },
+      ];
       emit("计数入桶", `count[${a[i]}] = ${counts[a[i]]}。`, [i]);
     }
     let k = 0;
@@ -287,6 +305,14 @@ export function sorting(id: string, raw: string, target = 5): Trace {
       for (let i = 0; i < a.length; i++) {
         const d = Math.floor(a[i] / exp) % 10;
         buckets[d].push(a[i]);
+        worklists = [
+          {
+            name: `${exp} 位的桶 · 桶内保持输入先后`,
+            items: buckets.flatMap((bucket, digit) =>
+              bucket.length ? [`${digit}: ${bucket.join(" → ")}`] : [],
+            ),
+          },
+        ];
         emit("按位分桶", `数值 ${a[i]} 的 ${exp} 位数字为 ${d}。`, [i]);
       }
       a.splice(0, a.length, ...buckets.flat());

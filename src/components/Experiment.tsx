@@ -178,19 +178,14 @@ export function Experiment({
             </div>
           )}
           <div className="input-context" aria-label="实验数据上下文">
-            <details open>
-              <summary>
-                初始数据 ·{" "}
-                {(frame.inputState?.source || trace.source || []).length} 项
-              </summary>
+            <div className="original-input">
+              <strong>初始数据 · {(trace.source || []).length} 项</strong>
               <div className="data-chips">
-                {(frame.inputState?.source || trace.source || []).map(
-                  (v, i) => (
-                    <span key={i}>{v}</span>
-                  ),
-                )}
+                {(trace.source || []).map((v, i) => (
+                  <span key={i}>{v}</span>
+                ))}
               </div>
-            </details>
+            </div>
             {frame.inputState && (
               <div className="processing-row">
                 {frame.inputState.label && (
@@ -213,6 +208,29 @@ export function Experiment({
                 ? " · " + trace.frames[position + 1].detail
                 : ""}
             </p>
+          </div>
+          <div className="worklist-panel" aria-label="算法工作区">
+            {frame.worklists?.length ? (
+              frame.worklists.map((list) => (
+                <div key={list.name}>
+                  <strong>{list.name}</strong>
+                  <div className="data-chips">
+                    {list.items.length ? (
+                      list.items.map((item, i) => <span key={i}>{item}</span>)
+                    ) : (
+                      <em>空</em>
+                    )}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="muted">
+                {frame.inputState?.label || "状态观察"} ·{" "}
+                {frame.inputState
+                  ? `待处理：${frame.inputState.pending.join(" → ") || "无"}`
+                  : "当前计算状态见下方图解；原始输入保持在上方。"}
+              </p>
+            )}
           </div>
           <div className="canvas">
             <div className="canvas-top">
@@ -299,12 +317,10 @@ export function Experiment({
               </span>
             </div>
           </div>
-          {inspect && (
-            <div className="inspect" role="status">
-              <Info size={14} />
-              {inspect}
-            </div>
-          )}
+          <div className="inspect" role={inspect ? "status" : undefined}>
+            <Info size={14} />
+            {inspect || "点击图中元素查看详情。"}
+          </div>
           <div className="playback">
             <button
               className="play-button"
@@ -478,6 +494,82 @@ export function Experiment({
               </div>
             </>
           )}
+          {frame.tables?.map((table) => (
+            <section
+              className="trace-table"
+              key={table.title}
+              aria-label={table.title}
+            >
+              <h4>{table.title}</h4>
+              <table>
+                <thead>
+                  <tr>
+                    {table.columns.map((c) => (
+                      <th key={c}>{c}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {table.rows.map((row, i) => (
+                    <tr key={i}>
+                      {row.map((cell, j) => (
+                        <td key={j}>{cell}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          ))}
+          <section className="final-output" aria-label="演示输出">
+            <h4>
+              {position === trace.frames.length - 1
+                ? trace.output?.title || "最终计算结果"
+                : "完成后核对结果"}
+            </h4>
+            {position === trace.frames.length - 1 ? (
+              trace.output ? (
+                <>
+                  {trace.output.columns && (
+                    <table>
+                      <thead>
+                        <tr>
+                          {trace.output.columns.map((c) => (
+                            <th key={c}>{c}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {trace.output.rows?.map((r, i) => (
+                          <tr key={i}>
+                            {r.map((c, j) => (
+                              <td key={j}>{c}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                  {trace.output.summary.map((line, i) => (
+                    <p key={i}>{line}</p>
+                  ))}
+                </>
+              ) : (
+                <pre>
+                  {JSON.stringify(
+                    trace.result,
+                    (_key, value) =>
+                      typeof value === "number" && !Number.isFinite(value)
+                        ? String(value)
+                        : value,
+                    2,
+                  )}
+                </pre>
+              )
+            ) : (
+              <p>继续单步或拖动进度到末尾，查看最终输出。输入会始终保留。</p>
+            )}
+          </section>
           <details className="result">
             <summary>查看本次计算结果</summary>
             <pre>{JSON.stringify(trace.result, null, 2)}</pre>

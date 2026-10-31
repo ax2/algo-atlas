@@ -107,18 +107,27 @@ test("catalog search, complexity, mastery and integrated cases", async ({
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     "Dijkstra",
   );
-  await page.getByRole("tab", { name: "复杂度分析" }).click();
+  await page
+    .getByRole("navigation", { name: "课程章节" })
+    .getByRole("button", { name: "复杂度分析" })
+    .click();
   await expect(page.getByText("把复杂度拆开看")).toBeVisible();
   await page.getByRole("slider", { name: "复杂度输入规模" }).fill("128");
   await expect(page.locator(".scale-control")).toContainText("128");
-  await page.getByRole("tab", { name: "原理与历史" }).click();
+  await page
+    .getByRole("navigation", { name: "课程章节" })
+    .getByRole("button", { name: "原理与历史" })
+    .click();
   await expect(page.getByRole("heading", { name: "发展背景" })).toBeVisible();
-  await page.getByRole("tab", { name: "代码与练习" }).click();
+  await page
+    .getByRole("navigation", { name: "课程章节" })
+    .getByRole("button", { name: "课后练习" })
+    .click();
   await page
     .locator(".answer-options button")
     .filter({ hasText: "在非负权前提下" })
     .click();
-  await expect(page.getByRole("status")).toContainText("回答正确");
+  await expect(page.locator(".answer-feedback")).toContainText("回答正确");
   await page.getByRole("button", { name: "标记本课已掌握" }).click();
   await page.goto("/#/learning");
   await expect(page.locator(".progress-banner")).toContainText("已掌握 1 / 79");

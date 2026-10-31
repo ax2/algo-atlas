@@ -271,10 +271,30 @@ export function advanced(id: string, raw: string): Trace {
     updates.forEach(([l, r, d]) => update(1, l, r, d));
     const query = (p: number, L: number, R: number): number => {
       const [l, r] = ranges[p];
-      if (R < l || r < L) return 0;
-      if (L <= l && r <= R) return sum[p];
+      if (R < l || r < L) {
+        add(
+          "查询跳过不相交段",
+          `[${l},${r}] 不在查询 [${L},${R}] 中，贡献 0。`,
+          pic(),
+        );
+        return 0;
+      }
+      if (L <= l && r <= R) {
+        add(
+          "查询整段命中",
+          `[${l},${r}] 的 sum=${sum[p]} 已包含懒标记，可以直接取值，不必遍历孩子。`,
+          { ...pic(), checkpoint: true },
+        );
+        return sum[p];
+      }
       push(p);
-      return query(p * 2, L, R) + query(p * 2 + 1, L, R);
+      const value = query(p * 2, L, R) + query(p * 2 + 1, L, R);
+      add(
+        "查询合并两侧贡献",
+        `节点 ${p} 将相交子区间的查询结果相加，得到 ${value}。`,
+        pic(),
+      );
+      return value;
     };
     const value = query(1, 2, 6);
     result = { updates, range: [2, 6], value, total: sum[1] };
@@ -334,12 +354,43 @@ export function advanced(id: string, raw: string): Trace {
     });
     const change = (p: P, at: number, value: number): P => {
       const q = { ...p, id: `n${serial++}` };
+      add(
+        "复制访问路径上的结点",
+        `修改 a[${at}]←${value}，复制旧结点 ${p.id} 为 ${q.id}，范围 [${p.l},${p.r}]。旧版本仍可读；新根尚未发布。`,
+        {
+          ...pic(),
+          worklists: [
+            {
+              name: "正在创建的新版本结点",
+              items: [`${p.id} → ${q.id} [${p.l},${p.r}]`],
+            },
+          ],
+          checkpoint: true,
+        },
+      );
       if (q.l === q.r) q.sum = value;
       else {
         if (at <= q.left!.r) q.left = change(q.left!, at, value);
         else q.right = change(q.right!, at, value);
         q.sum = q.left!.sum + q.right!.sum;
       }
+      add(
+        "回填复制结点的区间和",
+        `${q.id} 的新和为 ${q.sum}；旧 ${p.id} 仍为 ${p.sum}。未修改的孩子沿用旧 ID。`,
+        {
+          ...pic(),
+          tables: [
+            {
+              title: "旧结点与新副本",
+              columns: ["版本", "ID", "sum"],
+              rows: [
+                ["旧", p.id, p.sum],
+                ["新", q.id, q.sum],
+              ],
+            },
+          ],
+        },
+      );
       return q;
     };
     const changes = variant

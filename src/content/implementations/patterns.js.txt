@@ -1,0 +1,156 @@
+// @prefix-sum
+function solve(a, queries) {
+  const prefix = [0];
+  for (const x of a) prefix.push(prefix.at(-1) + x);
+  return queries.map(([l, r]) => prefix[r] - prefix[l]);
+}
+// @two-pointers
+function solve(a, target) {
+  let l = 0,
+    r = a.length - 1;
+  while (l < r) {
+    const sum = a[l] + a[r];
+    if (sum === target) return [l, r];
+    if (sum < target) l++;
+    else r--;
+  }
+  return [];
+}
+// @sliding-window
+function solve(a, k) {
+  if (k < 1 || k > a.length) throw new Error("invalid window");
+  let sum = 0,
+    best = -Infinity;
+  for (let i = 0; i < a.length; i++) {
+    sum += a[i];
+    if (i >= k) sum -= a[i - k];
+    if (i >= k - 1) best = Math.max(best, sum);
+  }
+  return best;
+}
+// @monotonic-stack
+function solve(a) {
+  const stack = [],
+    next = Array(a.length).fill(-1);
+  for (let i = 0; i < a.length; i++) {
+    while (stack.length && a[stack.at(-1)] < a[i]) next[stack.pop()] = i;
+    stack.push(i);
+  }
+  return next;
+}
+// @fibonacci
+function solve(n) {
+  const cache = new Map([
+    [0, 0],
+    [1, 1],
+  ]);
+  function fib(k) {
+    if (cache.has(k)) return cache.get(k);
+    const value = fib(k - 1) + fib(k - 2);
+    cache.set(k, value);
+    return value;
+  }
+  return fib(n);
+}
+// @knapsack
+function solve(weights, values, capacity) {
+  const dp = Array(capacity + 1).fill(0);
+  for (let i = 0; i < weights.length; i++)
+    for (let c = capacity; c >= weights[i]; c--)
+      dp[c] = Math.max(dp[c], dp[c - weights[i]] + values[i]);
+  return dp[capacity];
+}
+// @coin-change
+function solve(coins, amount) {
+  const dp = Array(amount + 1).fill(Infinity);
+  dp[0] = 0;
+  for (let x = 1; x <= amount; x++)
+    for (const coin of coins)
+      if (coin <= x) dp[x] = Math.min(dp[x], dp[x - coin] + 1);
+  return Number.isFinite(dp[amount]) ? dp[amount] : -1;
+}
+// @lcs
+function solve(a, b) {
+  const dp = Array.from({ length: a.length + 1 }, () =>
+    Array(b.length + 1).fill(0),
+  );
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++)
+      dp[i][j] =
+        a[i - 1] === b[j - 1]
+          ? dp[i - 1][j - 1] + 1
+          : Math.max(dp[i - 1][j], dp[i][j - 1]);
+  return dp[a.length][b.length];
+}
+// @edit-distance
+function solve(a, b) {
+  const dp = Array.from({ length: a.length + 1 }, (_, i) =>
+    Array.from({ length: b.length + 1 }, (_, j) => (i ? (j ? 0 : i) : j)),
+  );
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++)
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + Number(a[i - 1] !== b[j - 1]),
+      );
+  return dp[a.length][b.length];
+}
+// @lis
+function solve(a) {
+  const tails = [];
+  for (const x of a) {
+    let l = 0,
+      r = tails.length;
+    while (l < r) {
+      const m = (l + r) >> 1;
+      if (tails[m] < x) l = m + 1;
+      else r = m;
+    }
+    tails[l] = x;
+  }
+  return tails.length;
+}
+// @backtracking
+function solve(n) {
+  const solutions = [],
+    cols = new Set(),
+    diag1 = new Set(),
+    diag2 = new Set(),
+    path = [];
+  function visit(row) {
+    if (row === n) {
+      solutions.push([...path]);
+      return;
+    }
+    for (let col = 0; col < n; col++) {
+      if (cols.has(col) || diag1.has(row - col) || diag2.has(row + col))
+        continue;
+      cols.add(col);
+      diag1.add(row - col);
+      diag2.add(row + col);
+      path.push(col);
+      visit(row + 1);
+      cols.delete(col);
+      diag1.delete(row - col);
+      diag2.delete(row + col);
+      path.pop();
+    }
+  }
+  visit(0);
+  return solutions;
+}
+// @greedy
+function solve(intervals) {
+  const sorted = intervals
+    .map((x, id) => ({ start: x[0], end: x[1], id }))
+    .sort((a, b) => a.end - b.end || a.id - b.id);
+  let end = -Infinity;
+  const chosen = [];
+  for (const item of sorted)
+    if (item.start >= end) {
+      chosen.push(item.id);
+      end = item.end;
+    }
+  return chosen;
+}

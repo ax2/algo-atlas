@@ -1,0 +1,426 @@
+// @array
+function solve(values, index, value) {
+  const a = [...values];
+  // 在 index 插入：先追加空位，再从右向左移动。
+  a.push(null);
+  for (let j = a.length - 1; j > index; j--) a[j] = a[j - 1];
+  a[index] = value;
+  return a;
+}
+// @linked-list
+function solve(values) {
+  let head = null;
+  for (let i = values.length - 1; i >= 0; i--)
+    head = { value: values[i], next: head };
+  let previous = null,
+    current = head;
+  while (current) {
+    const next = current.next;
+    current.next = previous;
+    previous = current;
+    current = next;
+  }
+  const out = [];
+  for (let node = previous; node; node = node.next) out.push(node.value);
+  return out;
+}
+// @stack
+function solve(operations) {
+  const stack = [],
+    output = [];
+  for (const [op, value] of operations) {
+    if (op === "push") stack.push(value);
+    if (op === "pop") output.push(stack.length ? stack.pop() : null);
+    if (op === "peek") output.push(stack.length ? stack.at(-1) : null);
+  }
+  return output;
+}
+// @queue
+function solve(operations) {
+  const data = [];
+  let head = 0;
+  const output = [];
+  for (const [op, value] of operations) {
+    if (op === "push") data.push(value);
+    if (op === "pop") output.push(head < data.length ? data[head++] : null);
+    if (op === "peek") output.push(head < data.length ? data[head] : null);
+  }
+  return output;
+}
+// @deque
+function solve(operations) {
+  const data = new Map(),
+    output = [];
+  let left = 0,
+    right = 0;
+  for (const [op, value] of operations) {
+    if (op === "pushLeft") data.set(--left, value);
+    if (op === "pushRight") data.set(right++, value);
+    if (op === "popLeft" || op === "popRight") {
+      if (left === right) output.push(null);
+      else {
+        const i = op === "popLeft" ? left++ : --right;
+        output.push(data.get(i));
+        data.delete(i);
+      }
+    }
+  }
+  return output;
+}
+// @hash-table
+function solve(operations) {
+  const buckets = Array.from({ length: 17 }, () => []),
+    output = [];
+  function hash(key) {
+    let h = 0;
+    for (const c of key) h = (h * 31 + c.charCodeAt(0)) % 17;
+    return h;
+  }
+  for (const [op, key, value] of operations) {
+    const bucket = buckets[hash(key)],
+      i = bucket.findIndex((pair) => pair[0] === key);
+    if (op === "set") {
+      if (i < 0) bucket.push([key, value]);
+      else bucket[i][1] = value;
+    }
+    if (op === "get") output.push(i < 0 ? null : bucket[i][1]);
+    if (op === "delete" && i >= 0) bucket.splice(i, 1);
+  }
+  return output;
+}
+// @bst
+function solve(values, queries) {
+  let root = null;
+  function insert(node, key) {
+    if (!node) return { key, left: null, right: null };
+    if (key < node.key) node.left = insert(node.left, key);
+    if (key > node.key) node.right = insert(node.right, key);
+    return node;
+  }
+  for (const x of values) root = insert(root, x);
+  return queries.map((key) => {
+    let node = root;
+    while (node && node.key !== key)
+      node = key < node.key ? node.left : node.right;
+    return !!node;
+  });
+}
+// @avl
+function solve(values) {
+  const height = (n) => (n ? n.height : 0);
+  const fix = (n) => {
+    n.height = 1 + Math.max(height(n.left), height(n.right));
+    return n;
+  };
+  function right(y) {
+    const x = y.left;
+    y.left = x.right;
+    x.right = y;
+    fix(y);
+    return fix(x);
+  }
+  function left(x) {
+    const y = x.right;
+    x.right = y.left;
+    y.left = x;
+    fix(x);
+    return fix(y);
+  }
+  function insert(n, key) {
+    if (!n) return { key, height: 1, left: null, right: null };
+    if (key < n.key) n.left = insert(n.left, key);
+    else if (key > n.key) n.right = insert(n.right, key);
+    else return n;
+    fix(n);
+    const balance = height(n.left) - height(n.right);
+    if (balance > 1) {
+      if (key > n.left.key) n.left = left(n.left);
+      return right(n);
+    }
+    if (balance < -1) {
+      if (key < n.right.key) n.right = right(n.right);
+      return left(n);
+    }
+    return n;
+  }
+  let root = null;
+  for (const x of values) root = insert(root, x);
+  const pack = (n) =>
+    n ? [n.key, pack(n.left), pack(n.right), n.height] : null;
+  return pack(root);
+}
+// @red-black
+function solve(values) {
+  const red = (n) => !!n && n.red;
+  function left(h) {
+    const x = h.right;
+    h.right = x.left;
+    x.left = h;
+    x.red = h.red;
+    h.red = true;
+    return x;
+  }
+  function right(h) {
+    const x = h.left;
+    h.left = x.right;
+    x.right = h;
+    x.red = h.red;
+    h.red = true;
+    return x;
+  }
+  function insert(h, key) {
+    if (!h) return { key, red: true, left: null, right: null };
+    if (key < h.key) h.left = insert(h.left, key);
+    else if (key > h.key) h.right = insert(h.right, key);
+    if (red(h.right) && !red(h.left)) h = left(h);
+    if (red(h.left) && red(h.left.left)) h = right(h);
+    if (red(h.left) && red(h.right)) {
+      h.red = !h.red;
+      h.left.red = !h.left.red;
+      h.right.red = !h.right.red;
+    }
+    return h;
+  }
+  let root = null;
+  for (const x of values) {
+    root = insert(root, x);
+    root.red = false;
+  }
+  const pack = (n) =>
+    n ? [n.key, pack(n.left), pack(n.right), n.red ? "R" : "B"] : null;
+  return pack(root);
+}
+// @heap
+function solve(values) {
+  const heap = [],
+    output = [];
+  for (const x of values) {
+    heap.push(x);
+    let i = heap.length - 1;
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (heap[p] <= heap[i]) break;
+      [heap[p], heap[i]] = [heap[i], heap[p]];
+      i = p;
+    }
+  }
+  while (heap.length) {
+    output.push(heap[0]);
+    const last = heap.pop();
+    if (!heap.length) break;
+    heap[0] = last;
+    let i = 0;
+    while (i * 2 + 1 < heap.length) {
+      let c = i * 2 + 1;
+      if (c + 1 < heap.length && heap[c + 1] < heap[c]) c++;
+      if (heap[i] <= heap[c]) break;
+      [heap[i], heap[c]] = [heap[c], heap[i]];
+      i = c;
+    }
+  }
+  return output;
+}
+// @trie
+function solve(words, queries) {
+  const root = { children: new Map(), end: false };
+  for (const word of words) {
+    let node = root;
+    for (const ch of word) {
+      if (!node.children.has(ch))
+        node.children.set(ch, { children: new Map(), end: false });
+      node = node.children.get(ch);
+    }
+    node.end = true;
+  }
+  return queries.map(([kind, word]) => {
+    let node = root;
+    for (const ch of word) {
+      node = node.children.get(ch);
+      if (!node) return false;
+    }
+    return kind === "prefix" || node.end;
+  });
+}
+// @union-find
+function solve(n, unions, queries) {
+  const parent = Array.from({ length: n }, (_, i) => i),
+    size = Array(n).fill(1);
+  function find(x) {
+    if (parent[x] !== x) parent[x] = find(parent[x]);
+    return parent[x];
+  }
+  for (const [x, y] of unions) {
+    let a = find(x),
+      b = find(y);
+    if (a === b) continue;
+    if (size[a] < size[b]) [a, b] = [b, a];
+    parent[b] = a;
+    size[a] += size[b];
+  }
+  return queries.map(([x, y]) => find(x) === find(y));
+}
+// @fenwick
+function solve(values, operations) {
+  const tree = Array(values.length + 1).fill(0),
+    out = [];
+  function add(i, delta) {
+    for (i++; i < tree.length; i += i & -i) tree[i] += delta;
+  }
+  function prefix(end) {
+    let sum = 0;
+    for (; end > 0; end -= end & -end) sum += tree[end];
+    return sum;
+  }
+  values.forEach((x, i) => add(i, x));
+  for (const [op, a, b] of operations) {
+    if (op === "add") add(a, b);
+    if (op === "sum") out.push(prefix(b) - prefix(a));
+  }
+  return out;
+}
+// @segment-tree
+function solve(values, operations) {
+  let n = 1;
+  while (n < values.length) n *= 2;
+  const tree = Array(n * 2).fill(0),
+    out = [];
+  values.forEach((x, i) => (tree[n + i] = x));
+  for (let i = n - 1; i > 0; i--) tree[i] = tree[i * 2] + tree[i * 2 + 1];
+  for (const [op, a, b] of operations) {
+    if (op === "set") {
+      let p = n + a;
+      tree[p] = b;
+      while (p > 1) {
+        p >>= 1;
+        tree[p] = tree[p * 2] + tree[p * 2 + 1];
+      }
+    }
+    if (op === "sum") {
+      let l = n + a,
+        r = n + b,
+        sum = 0;
+      while (l < r) {
+        if (l % 2) sum += tree[l++];
+        if (r % 2) sum += tree[--r];
+        l >>= 1;
+        r >>= 1;
+      }
+      out.push(sum);
+    }
+  }
+  return out;
+}
+// @skip-list
+function solve(values, heights, queries) {
+  const levels = 4,
+    head = { key: -Infinity, next: Array(4).fill(null) };
+  for (let i = 0; i < values.length; i++) {
+    const key = values[i],
+      update = Array(levels);
+    let p = head;
+    for (let level = levels - 1; level >= 0; level--) {
+      while (p.next[level] && p.next[level].key < key) p = p.next[level];
+      update[level] = p;
+    }
+    if (p.next[0]?.key === key) continue;
+    const node = { key, next: Array(heights[i]).fill(null) };
+    for (let level = 0; level < node.next.length; level++) {
+      node.next[level] = update[level].next[level];
+      update[level].next[level] = node;
+    }
+  }
+  return queries.map((key) => {
+    let p = head;
+    for (let level = levels - 1; level >= 0; level--)
+      while (p.next[level] && p.next[level].key < key) p = p.next[level];
+    return p.next[0]?.key === key;
+  });
+}
+// @b-tree
+function solve(values, queries) {
+  // 最小度数 t=2：每个结点至多 3 个键；重复键作为集合忽略。
+  let root = { keys: [], children: [] };
+  function split(parent, i) {
+    const child = parent.children[i],
+      right = { keys: child.keys.slice(2), children: child.children.slice(2) };
+    parent.keys.splice(i, 0, child.keys[1]);
+    parent.children.splice(i + 1, 0, right);
+    child.keys = child.keys.slice(0, 1);
+    child.children = child.children.slice(0, 2);
+  }
+  function insert(node, key) {
+    let i = 0;
+    while (i < node.keys.length && node.keys[i] < key) i++;
+    if (node.keys[i] === key) return;
+    if (!node.children.length) {
+      node.keys.splice(i, 0, key);
+      return;
+    }
+    if (node.children[i].keys.length === 3) {
+      split(node, i);
+      if (key === node.keys[i]) return;
+      if (key > node.keys[i]) i++;
+    }
+    insert(node.children[i], key);
+  }
+  for (const key of values) {
+    if (root.keys.length === 3) {
+      root = { keys: [], children: [root] };
+      split(root, 0);
+    }
+    insert(root, key);
+  }
+  return queries.map((key) => {
+    let node = root;
+    while (node) {
+      let i = 0;
+      while (i < node.keys.length && node.keys[i] < key) i++;
+      if (node.keys[i] === key) return true;
+      node = node.children[i];
+    }
+    return false;
+  });
+}
+// @bloom
+function solve(words, queries) {
+  const bits = Array(64).fill(false);
+  function hashes(word) {
+    return [17, 31, 47].map((seed) => {
+      let h = 0;
+      for (const c of word) h = (h * seed + c.charCodeAt(0)) % 64;
+      return h;
+    });
+  }
+  for (const word of words) for (const h of hashes(word)) bits[h] = true;
+  return queries.map((word) => hashes(word).every((h) => bits[h])); // true 仅表示“可能存在”
+}
+// @lru
+function solve(capacity, operations) {
+  const cache = new Map(),
+    out = [];
+  for (const [op, key, value] of operations) {
+    if (op === "get") {
+      if (!cache.has(key)) out.push(null);
+      else {
+        const v = cache.get(key);
+        cache.delete(key);
+        cache.set(key, v);
+        out.push(v);
+      }
+    } else if (op === "set" && capacity > 0) {
+      cache.delete(key);
+      cache.set(key, value);
+      if (cache.size > capacity) cache.delete(cache.keys().next().value);
+    }
+  }
+  return out;
+}
+// @graph
+function solve(n, edges, directed) {
+  const adjacency = Array.from({ length: n }, () => []);
+  for (const [u, v] of edges) {
+    adjacency[u].push(v);
+    if (!directed) adjacency[v].push(u);
+  }
+  return adjacency;
+}

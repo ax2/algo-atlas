@@ -30,6 +30,8 @@ export type Frame = {
   cells?: [number, number][];
   stats: Record<string, number | string>;
   result?: unknown;
+  worklists?: { name: string; items: string[] }[];
+  tables?: { title: string; columns: string[]; rows: (string | number)[][] }[];
   checkpoint?: boolean;
   explanation?: {
     why: string;
@@ -47,6 +49,12 @@ export type Frame = {
 };
 export type Trace = {
   source?: string[];
+  output?: {
+    title: string;
+    columns?: string[];
+    rows?: (string | number)[][];
+    summary: string[];
+  };
   frames: Frame[];
   kind: "bars" | "cells" | "graph" | "matrix" | "board";
   result: unknown;

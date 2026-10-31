@@ -1,0 +1,116 @@
+// @naive-match
+function solve(text, pattern) {
+  const found = [];
+  for (let i = 0; i + pattern.length <= text.length; i++) {
+    let j = 0;
+    while (j < pattern.length && text[i + j] === pattern[j]) j++;
+    if (j === pattern.length) found.push(i);
+  }
+  return found;
+}
+// @kmp
+function solve(text, pattern) {
+  if (!pattern.length)
+    return Array.from({ length: text.length + 1 }, (_, i) => i);
+  const pi = Array(pattern.length).fill(0),
+    found = [];
+  for (let i = 1, j = 0; i < pattern.length; i++) {
+    while (j && pattern[i] !== pattern[j]) j = pi[j - 1];
+    if (pattern[i] === pattern[j]) j++;
+    pi[i] = j;
+  }
+  for (let i = 0, j = 0; i < text.length; i++) {
+    while (j && text[i] !== pattern[j]) j = pi[j - 1];
+    if (text[i] === pattern[j]) j++;
+    if (j === pattern.length) {
+      found.push(i - j + 1);
+      j = pi[j - 1];
+    }
+  }
+  return found;
+}
+// @rabin-karp
+function solve(text, pattern) {
+  const n = text.length,
+    m = pattern.length,
+    base = 257,
+    mod = 1000003;
+  if (m > n) return [];
+  if (!m) return Array.from({ length: n + 1 }, (_, i) => i);
+  let target = 0,
+    hash = 0,
+    power = 1;
+  const found = [];
+  for (let j = 0; j < m; j++) {
+    target = (target * base + pattern.charCodeAt(j)) % mod;
+    hash = (hash * base + text.charCodeAt(j)) % mod;
+    if (j) power = (power * base) % mod;
+  }
+  for (let i = 0; i <= n - m; i++) {
+    // 哈希相同仍逐字验证，避免碰撞导致错误。
+    if (hash === target && text.slice(i, i + m) === pattern) found.push(i);
+    if (i < n - m)
+      hash =
+        ((((hash - text.charCodeAt(i) * power) % mod) + mod) * base +
+          text.charCodeAt(i + m)) %
+        mod;
+  }
+  return found;
+}
+// @z-function
+function solve(s) {
+  const z = Array(s.length).fill(0);
+  let l = 0,
+    r = 0;
+  for (let i = 1; i < s.length; i++) {
+    if (i < r) z[i] = Math.min(r - i, z[i - l]);
+    while (i + z[i] < s.length && s[z[i]] === s[i + z[i]]) z[i]++;
+    if (i + z[i] > r) {
+      l = i;
+      r = i + z[i];
+    }
+  }
+  return z;
+}
+// @suffix-array
+function solve(s) {
+  // 直观比较排序版；字符比较成本不可当作 O(1)。
+  return Array.from({ length: s.length }, (_, i) => i).sort((a, b) =>
+    s.slice(a) < s.slice(b) ? -1 : s.slice(a) > s.slice(b) ? 1 : 0,
+  );
+}
+// @huffman
+function solve(text) {
+  const counts = new Map();
+  for (const ch of text) counts.set(ch, (counts.get(ch) || 0) + 1);
+  const forest = [...counts].map(([ch, weight]) => ({ ch, weight }));
+  const codes = {};
+  while (forest.length > 1) {
+    forest.sort((a, b) => a.weight - b.weight); // 稳定排序处理同频结点。
+    const left = forest.shift(),
+      right = forest.shift();
+    forest.push({ weight: left.weight + right.weight, left, right });
+  }
+  function walk(node, prefix) {
+    if (node.ch !== undefined) codes[node.ch] = prefix || "0";
+    else {
+      walk(node.left, prefix + "0");
+      walk(node.right, prefix + "1");
+    }
+  }
+  if (forest.length) walk(forest[0], "");
+  const encoded = [...text].map((ch) => codes[ch]).join("");
+  const reverse = new Map(
+    Object.entries(codes).map(([ch, code]) => [code, ch]),
+  );
+  let decoded = "",
+    buffer = "";
+  for (const bit of encoded) {
+    buffer += bit;
+    if (reverse.has(buffer)) {
+      decoded += reverse.get(buffer);
+      buffer = "";
+    }
+  }
+  return { codes, encoded, decoded };
+}

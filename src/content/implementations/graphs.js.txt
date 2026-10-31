@@ -1,0 +1,237 @@
+// @bfs
+function solve(adj, start) {
+  const queue = [start],
+    seen = new Set(queue),
+    order = [];
+  for (let head = 0; head < queue.length; head++) {
+    const u = queue[head];
+    order.push(u);
+    for (const v of adj[u])
+      if (!seen.has(v)) {
+        seen.add(v);
+        queue.push(v);
+      }
+  }
+  return order;
+}
+// @dfs
+function solve(adj, start) {
+  const stack = [start],
+    seen = new Set(stack),
+    order = [];
+  while (stack.length) {
+    const u = stack.pop();
+    order.push(u);
+    for (const v of adj[u])
+      if (!seen.has(v)) {
+        seen.add(v);
+        stack.push(v);
+      }
+  }
+  return order;
+}
+// @dijkstra
+function solve(n, edges, start) {
+  const adj = Array.from({ length: n }, () => []);
+  for (const [u, v, w] of edges) {
+    if (w < 0) throw new Error("negative edge");
+    adj[u].push([v, w]);
+  }
+  const dist = Array(n).fill(Infinity),
+    done = Array(n).fill(false);
+  dist[start] = 0;
+  for (let step = 0; step < n; step++) {
+    let u = -1;
+    for (let v = 0; v < n; v++)
+      if (!done[v] && (u < 0 || dist[v] < dist[u])) u = v;
+    if (u < 0 || dist[u] === Infinity) break;
+    done[u] = true;
+    for (const [v, w] of adj[u]) dist[v] = Math.min(dist[v], dist[u] + w);
+  }
+  return dist.map((x) => (x === Infinity ? null : x));
+}
+// @bellman-ford
+function solve(n, edges, start) {
+  const d = Array(n).fill(Infinity);
+  d[start] = 0;
+  for (let round = 1; round < n; round++) {
+    let changed = false;
+    for (const [u, v, w] of edges)
+      if (d[u] + w < d[v]) {
+        d[v] = d[u] + w;
+        changed = true;
+      }
+    if (!changed) break;
+  }
+  const negativeCycle = edges.some(([u, v, w]) => d[u] + w < d[v]);
+  return {
+    negativeCycle,
+    distances: negativeCycle ? null : d.map((x) => (x === Infinity ? null : x)),
+  };
+}
+// @floyd
+function solve(n, edges) {
+  const d = Array.from({ length: n }, (_, i) =>
+    Array.from({ length: n }, (_, j) => (i === j ? 0 : Infinity)),
+  );
+  for (const [u, v, w] of edges) d[u][v] = Math.min(d[u][v], w);
+  for (let k = 0; k < n; k++)
+    for (let i = 0; i < n; i++)
+      for (let j = 0; j < n; j++)
+        d[i][j] = Math.min(d[i][j], d[i][k] + d[k][j]);
+  const negativeCycle = d.some((row, i) => row[i] < 0);
+  return {
+    negativeCycle,
+    distances: negativeCycle
+      ? null
+      : d.map((row) => row.map((x) => (x === Infinity ? null : x))),
+  };
+}
+// @topological
+function solve(adj) {
+  const degree = Array(adj.length).fill(0),
+    queue = [],
+    order = [];
+  for (const row of adj) for (const v of row) degree[v]++;
+  degree.forEach((d, v) => {
+    if (!d) queue.push(v);
+  });
+  for (let head = 0; head < queue.length; head++) {
+    const u = queue[head];
+    order.push(u);
+    for (const v of adj[u]) if (--degree[v] === 0) queue.push(v);
+  }
+  return order.length === adj.length ? order : null;
+}
+// @kruskal
+function solve(n, edges) {
+  const parent = Array.from({ length: n }, (_, i) => i),
+    size = Array(n).fill(1);
+  function find(x) {
+    while (parent[x] !== x) {
+      parent[x] = parent[parent[x]];
+      x = parent[x];
+    }
+    return x;
+  }
+  const chosen = [];
+  let weight = 0;
+  for (const [u, v, w] of [...edges].sort((a, b) => a[2] - b[2])) {
+    let a = find(u),
+      b = find(v);
+    if (a === b) continue;
+    if (size[a] < size[b]) [a, b] = [b, a];
+    parent[b] = a;
+    size[a] += size[b];
+    chosen.push([u, v, w]);
+    weight += w;
+  }
+  return {
+    weight,
+    edges: chosen,
+    connected: n === 0 || chosen.length === n - 1,
+  };
+}
+// @prim
+function solve(n, edges) {
+  if (!n) return { weight: 0, connected: true };
+  const selected = new Set([0]);
+  let weight = 0;
+  while (selected.size < n) {
+    let best = null;
+    for (const e of edges)
+      if (
+        selected.has(e[0]) !== selected.has(e[1]) &&
+        (!best || e[2] < best[2])
+      )
+        best = e;
+    if (!best) return { weight, connected: false };
+    selected.add(best[0]);
+    selected.add(best[1]);
+    weight += best[2];
+  }
+  return { weight, connected: true };
+}
+// @astar
+function solve(n, edges, start, goal, h) {
+  // 非负边；h 必须一致且 h(goal)=0，才可永久关闭结点。
+  const g = Array(n).fill(Infinity),
+    closed = new Set(),
+    parent = Array(n).fill(-1);
+  const open = new Set([start]);
+  g[start] = 0;
+  while (open.size) {
+    let u = -1;
+    for (const v of open) if (u < 0 || g[v] + h[v] < g[u] + h[u]) u = v;
+    open.delete(u);
+    if (u === goal) {
+      const path = [];
+      for (let v = goal; v !== -1; v = parent[v]) path.push(v);
+      return { cost: g[goal], path: path.reverse() };
+    }
+    closed.add(u);
+    for (const [a, v, w] of edges)
+      if (a === u && !closed.has(v) && g[u] + w < g[v]) {
+        g[v] = g[u] + w;
+        parent[v] = u;
+        open.add(v);
+      }
+  }
+  return { cost: null, path: [] };
+}
+// @scc
+function solve(adj) {
+  const seen = new Set(),
+    order = [],
+    reverse = adj.map(() => []),
+    components = [];
+  adj.forEach((row, u) => row.forEach((v) => reverse[v].push(u)));
+  function dfs(u) {
+    seen.add(u);
+    for (const v of adj[u]) if (!seen.has(v)) dfs(v);
+    order.push(u);
+  }
+  for (let u = 0; u < adj.length; u++) if (!seen.has(u)) dfs(u);
+  seen.clear();
+  function collect(u, part) {
+    seen.add(u);
+    part.push(u);
+    for (const v of reverse[u]) if (!seen.has(v)) collect(v, part);
+  }
+  for (const u of order.reverse())
+    if (!seen.has(u)) {
+      const part = [];
+      collect(u, part);
+      components.push(part.sort((a, b) => a - b));
+    }
+  return components.sort((a, b) => a[0] - b[0]);
+}
+// @max-flow
+function solve(n, edges, source, sink) {
+  if (source === sink) throw new Error("distinct terminals required");
+  const residual = Array.from({ length: n }, () => Array(n).fill(0));
+  for (const [u, v, capacity] of edges) residual[u][v] += capacity;
+  let flow = 0;
+  while (true) {
+    const parent = Array(n).fill(-1),
+      queue = [source];
+    parent[source] = source;
+    for (let head = 0; head < queue.length && parent[sink] < 0; head++) {
+      const u = queue[head];
+      for (let v = 0; v < n; v++)
+        if (parent[v] < 0 && residual[u][v] > 0) {
+          parent[v] = u;
+          queue.push(v);
+        }
+    }
+    if (parent[sink] < 0) return flow;
+    let delta = Infinity;
+    for (let v = sink; v !== source; v = parent[v])
+      delta = Math.min(delta, residual[parent[v]][v]);
+    for (let v = sink; v !== source; v = parent[v]) {
+      residual[parent[v]][v] -= delta;
+      residual[v][parent[v]] += delta;
+    }
+    flow += delta;
+  }
+}

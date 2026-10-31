@@ -1,0 +1,218 @@
+// @treap
+function solve(keys, priorities, queries) {
+  function left(n) {
+    const r = n.right;
+    n.right = r.left;
+    r.left = n;
+    return r;
+  }
+  function right(n) {
+    const l = n.left;
+    n.left = l.right;
+    l.right = n;
+    return l;
+  }
+  function insert(n, key, priority) {
+    if (!n) return { key, priority, left: null, right: null };
+    if (key < n.key) {
+      n.left = insert(n.left, key, priority);
+      if (n.left.priority < n.priority) n = right(n);
+    }
+    if (key > n.key) {
+      n.right = insert(n.right, key, priority);
+      if (n.right.priority < n.priority) n = left(n);
+    }
+    return n;
+  }
+  let root = null;
+  keys.forEach((key, i) => (root = insert(root, key, priorities[i])));
+  return queries.map((key) => {
+    let n = root;
+    while (n && n.key !== key) n = key < n.key ? n.left : n.right;
+    return !!n;
+  });
+}
+// @splay
+function solve(values, queries) {
+  function left(x) {
+    const y = x.right;
+    x.right = y.left;
+    y.left = x;
+    return y;
+  }
+  function right(x) {
+    const y = x.left;
+    x.left = y.right;
+    y.right = x;
+    return y;
+  }
+  function splay(root, key) {
+    if (!root || root.key === key) return root;
+    if (key < root.key) {
+      if (!root.left) return root;
+      if (key < root.left.key) {
+        root.left.left = splay(root.left.left, key);
+        root = right(root);
+      } else if (key > root.left.key) {
+        root.left.right = splay(root.left.right, key);
+        if (root.left.right) root.left = left(root.left);
+      }
+      return root.left ? right(root) : root;
+    }
+    if (!root.right) return root;
+    if (key > root.right.key) {
+      root.right.right = splay(root.right.right, key);
+      root = left(root);
+    } else if (key < root.right.key) {
+      root.right.left = splay(root.right.left, key);
+      if (root.right.left) root.right = right(root.right);
+    }
+    return root.right ? left(root) : root;
+  }
+  let root = null;
+  for (const key of values) {
+    if (!root) {
+      root = { key, left: null, right: null };
+      continue;
+    }
+    root = splay(root, key);
+    if (root.key === key) continue;
+    if (key < root.key) {
+      const node = { key, left: root.left, right: root };
+      root.left = null;
+      root = node;
+    } else {
+      const node = { key, left: root, right: root.right };
+      root.right = null;
+      root = node;
+    }
+  }
+  return queries.map((key) => {
+    root = splay(root, key);
+    return root?.key ?? null;
+  });
+}
+// @lazy-segment
+function solve(values, operations) {
+  const n = values.length,
+    sum = Array(4 * n).fill(0),
+    tag = Array(4 * n).fill(0),
+    out = [];
+  function apply(p, l, r, v) {
+    sum[p] += (r - l) * v;
+    tag[p] += v;
+  }
+  function push(p, l, r) {
+    const m = (l + r) >> 1;
+    if (tag[p] && r - l > 1) {
+      apply(p * 2, l, m, tag[p]);
+      apply(p * 2 + 1, m, r, tag[p]);
+      tag[p] = 0;
+    }
+  }
+  function add(p, l, r, a, b, v) {
+    if (b <= l || r <= a) return;
+    if (a <= l && r <= b) {
+      apply(p, l, r, v);
+      return;
+    }
+    push(p, l, r);
+    const m = (l + r) >> 1;
+    add(p * 2, l, m, a, b, v);
+    add(p * 2 + 1, m, r, a, b, v);
+    sum[p] = sum[p * 2] + sum[p * 2 + 1];
+  }
+  function query(p, l, r, a, b) {
+    if (b <= l || r <= a) return 0;
+    if (a <= l && r <= b) return sum[p];
+    push(p, l, r);
+    const m = (l + r) >> 1;
+    return query(p * 2, l, m, a, b) + query(p * 2 + 1, m, r, a, b);
+  }
+  values.forEach((v, i) => add(1, 0, n, i, i + 1, v));
+  for (const [op, l, r, v] of operations) {
+    if (op === "add") add(1, 0, n, l, r, v);
+    else out.push(query(1, 0, n, l, r));
+  }
+  return out;
+}
+// @persistent-segment
+function solve(values, updates, queries) {
+  function build(l, r) {
+    if (r - l === 1) return { sum: values[l] };
+    const m = (l + r) >> 1,
+      left = build(l, m),
+      right = build(m, r);
+    return { sum: left.sum + right.sum, left, right };
+  }
+  function set(node, l, r, index, value) {
+    if (r - l === 1) return { sum: value };
+    const m = (l + r) >> 1;
+    const left = index < m ? set(node.left, l, m, index, value) : node.left;
+    const right = index >= m ? set(node.right, m, r, index, value) : node.right;
+    return { sum: left.sum + right.sum, left, right };
+  }
+  function query(node, l, r, a, b) {
+    if (b <= l || r <= a) return 0;
+    if (a <= l && r <= b) return node.sum;
+    const m = (l + r) >> 1;
+    return query(node.left, l, m, a, b) + query(node.right, m, r, a, b);
+  }
+  const versions = [build(0, values.length)];
+  for (const [base, index, value] of updates)
+    versions.push(set(versions[base], 0, values.length, index, value));
+  return queries.map(([version, l, r]) =>
+    query(versions[version], 0, values.length, l, r),
+  );
+}
+// @sparse-table
+function solve(values, queries) {
+  const table = [[...values]];
+  for (let k = 1; 2 ** k <= values.length; k++) {
+    table[k] = [];
+    for (let i = 0; i + 2 ** k <= values.length; i++)
+      table[k][i] = Math.min(table[k - 1][i], table[k - 1][i + 2 ** (k - 1)]);
+  }
+  return queries.map(([l, r]) => {
+    const k = Math.floor(Math.log2(r - l));
+    return Math.min(table[k][l], table[k][r - 2 ** k]);
+  });
+}
+// @kd-tree
+function solve(points, target) {
+  function build(ids, depth) {
+    if (!ids.length) return null;
+    const axis = depth % 2;
+    ids.sort((a, b) => points[a][axis] - points[b][axis] || a - b);
+    const mid = ids.length >> 1;
+    return {
+      id: ids[mid],
+      axis,
+      left: build(ids.slice(0, mid), depth + 1),
+      right: build(ids.slice(mid + 1), depth + 1),
+    };
+  }
+  let best = -1,
+    distance = Infinity;
+  function visit(node) {
+    if (!node) return;
+    const p = points[node.id],
+      d = (p[0] - target[0]) ** 2 + (p[1] - target[1]) ** 2;
+    if (d < distance || (d === distance && node.id < best)) {
+      best = node.id;
+      distance = d;
+    }
+    const delta = target[node.axis] - p[node.axis],
+      near = delta < 0 ? "left" : "right",
+      far = delta < 0 ? "right" : "left";
+    visit(node[near]);
+    if (delta * delta <= distance) visit(node[far]);
+  }
+  visit(
+    build(
+      points.map((_, i) => i),
+      0,
+    ),
+  );
+  return best;
+}

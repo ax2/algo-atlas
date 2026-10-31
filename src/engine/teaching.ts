@@ -166,6 +166,11 @@ export function teach(topic: Topic, trace: Trace, input: string): Trace {
         /旋|分裂|合并|松弛|回退|失败|增广|更新中心|反向|剪枝|最终|完成/.test(
           f.title,
         ) && i > 0;
+    if (!next) {
+      f.explanation.predict =
+        "核对最终结果与原始输入，再尝试边界输入或另一个场景。";
+      f.checkpoint = true;
+    }
   });
   return {
     ...trace,
