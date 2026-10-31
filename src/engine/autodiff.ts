@@ -3,43 +3,81 @@ export class Scalar {
   grad = 0;
   constructor(
     public value: number,
-    private parents: [Scalar, number][] = [],
+    public readonly parents: [Scalar, number][] = [],
+    public readonly operation = "input",
   ) {}
   add(b: Scalar | number) {
     const v = scalar(b);
-    return new Scalar(this.value + v.value, [
-      [this, 1],
-      [v, 1],
-    ]);
+    return new Scalar(
+      this.value + v.value,
+      [
+        [this, 1],
+        [v, 1],
+      ],
+      "add",
+    );
   }
   mul(b: Scalar | number) {
     const v = scalar(b);
-    return new Scalar(this.value * v.value, [
-      [this, v.value],
-      [v, this.value],
-    ]);
+    return new Scalar(
+      this.value * v.value,
+      [
+        [this, v.value],
+        [v, this.value],
+      ],
+      "mul",
+    );
   }
   pow(p: number) {
-    return new Scalar(this.value ** p, [[this, p * this.value ** (p - 1)]]);
+    return new Scalar(
+      this.value ** p,
+      [[this, p * this.value ** (p - 1)]],
+      `pow:${p}`,
+    );
   }
   exp() {
     const v = Math.exp(this.value);
-    return new Scalar(v, [[this, v]]);
+    return new Scalar(v, [[this, v]], "exp");
   }
   log() {
-    return new Scalar(Math.log(this.value), [[this, 1 / this.value]]);
+    return new Scalar(Math.log(this.value), [[this, 1 / this.value]], "log");
   }
   tanh() {
     const v = Math.tanh(this.value);
-    return new Scalar(v, [[this, 1 - v * v]]);
+    return new Scalar(v, [[this, 1 - v * v]], "tanh");
   }
   relu() {
-    return new Scalar(Math.max(0, this.value), [
-      [this, this.value > 0 ? 1 : 0],
-    ]);
+    return new Scalar(
+      Math.max(0, this.value),
+      [[this, this.value > 0 ? 1 : 0]],
+      "relu",
+    );
+  }
+  sigmoid() {
+    const value = 1 / (1 + Math.exp(-this.value));
+    return new Scalar(value, [[this, value * (1 - value)]], "sigmoid");
+  }
+  sin() {
+    return new Scalar(
+      Math.sin(this.value),
+      [[this, Math.cos(this.value)]],
+      "sin",
+    );
+  }
+  cos() {
+    return new Scalar(
+      Math.cos(this.value),
+      [[this, -Math.sin(this.value)]],
+      "cos",
+    );
   }
   backward(
-    observe?: (parent: Scalar, upstream: number, local: number) => void,
+    observe?: (
+      parent: Scalar,
+      upstream: number,
+      local: number,
+      source: Scalar,
+    ) => void,
   ) {
     const seen = new Set<Scalar>(),
       order: Scalar[] = [];
@@ -55,7 +93,7 @@ export class Scalar {
     for (const v of order.reverse())
       for (const [p, local] of v.parents) {
         p.grad += local * v.grad;
-        observe?.(p, v.grad, local);
+        observe?.(p, v.grad, local, v);
       }
   }
 }

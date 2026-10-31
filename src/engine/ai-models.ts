@@ -22,11 +22,8 @@ export function neuralModel(
       [1, 1],
     ],
     targets = variant ? [0, 0, 0, 1] : [0, 1, 1, 0];
-  const hidden = linear(
-    data.map((r) => r.map((v) => new Scalar(v))),
-    W1,
-    b1,
-  ).map((r) => r.map((v) => v.tanh()));
+  const input = data.map((r) => r.map((v) => new Scalar(v)));
+  const hidden = linear(input, W1, b1).map((r) => r.map((v) => v.tanh()));
   const logits = linear(hidden, W2, b2).map((r) => r[0]);
   // Stable binary cross entropy from logits: log(1 + exp(z)) - y*z.
   const losses = logits.map((z, i) => {
@@ -39,9 +36,17 @@ export function neuralModel(
       .add(m)
       .add(z.mul(-targets[i]));
   });
+  const loss = sum(losses).mul(1 / 4);
+  const inspect: Record<string, Scalar[][]> = {
+    input: input.map((row, i) => [...row, new Scalar(targets[i])]),
+    hidden,
+    prediction: logits.map((z, i) => [z, z.sigmoid(), new Scalar(targets[i])]),
+    loss: [[loss]],
+  };
   return {
     ...store,
-    loss: sum(losses).mul(1 / 4),
+    inspect,
+    loss,
     data,
     targets,
     hidden: values(hidden),
@@ -86,15 +91,25 @@ export function transformerModel(
     Math.sin(i / 100),
     Math.cos(i / 100),
   ]);
-  const x = tokens.map((t, i) => E[t].map((v, j) => v.add(position[i][j]))),
+  const positionNodes = tokens.map((_, i) => [
+    new Scalar(i).sin(),
+    new Scalar(i).cos(),
+    new Scalar(i).mul(0.01).sin(),
+    new Scalar(i).mul(0.01).cos(),
+  ]);
+  const x = tokens.map((t, i) =>
+      E[t].map((v, j) => v.add(positionNodes[i][j])),
+    ),
     n = norm(x),
     q = linear(n, Wq),
     k = linear(n, Wk),
     v = linear(n, Wv);
   const weights: Scalar[][][] = [],
-    scores: (number | string)[][][] = [];
+    scores: (number | string)[][][] = [],
+    scoreNodes: Scalar[][][] = [];
   const heads = [0, 1].map((h) => {
     const rows: Scalar[][] = [],
+      nodeRows: Scalar[][] = [],
       raw: (number | string)[][] = [];
     const out = tokens.map((_, i) => {
       const logits = tokens
@@ -104,14 +119,22 @@ export function transformerModel(
             1 / Math.sqrt(2),
           ),
         );
+      nodeRows.push([
+        ...logits,
+        ...tokens.slice(i + 1).map(() => new Scalar(-Infinity, [], "mask")),
+      ]);
       const a = softmax(logits);
-      rows.push([...a, ...tokens.slice(i + 1).map(() => new Scalar(0))]);
+      rows.push([
+        ...a,
+        ...tokens.slice(i + 1).map(() => new Scalar(0, [], "mask")),
+      ]);
       raw.push([
         ...logits.map((l) => l.value),
         ...tokens.slice(i + 1).map(() => "−∞"),
       ]);
       return [0, 1].map((d) => sum(a.map((w, j) => w.mul(v[j][h * 2 + d]))));
     });
+    scoreNodes.push(nodeRows);
     weights.push(rows);
     scores.push(raw);
     return out;
@@ -136,9 +159,34 @@ export function transformerModel(
       .add(m)
       .add(r[targets[i]].mul(-1));
   });
+  const loss = sum(losses).mul(1 / tokens.length);
+  const inspect: Record<string, Scalar[][]> = {
+    tokens: tokens.map((t, i) => [new Scalar(t), new Scalar(targets[i])]),
+    embedding: x,
+    position: positionNodes,
+    q,
+    k,
+    v,
+    concat,
+    residual,
+    feed,
+    output,
+    probabilities: probs,
+    loss: [[loss]],
+    "LN(X)": n,
+    "LN(R)": normalizedResidual,
+    "LN(Z)": normalizedOutput,
+    FFHidden: feedHidden,
+    logits,
+  };
+  weights.forEach((rows, h) => {
+    inspect[`attention-${h}`] = rows;
+    inspect[`scores-${h}`] = scoreNodes[h];
+  });
   return {
     ...store,
-    loss: sum(losses).mul(1 / tokens.length),
+    inspect,
+    loss,
     tokens,
     targets,
     position,

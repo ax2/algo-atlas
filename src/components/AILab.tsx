@@ -1,3 +1,5 @@
+import { calculationSteps } from "../engine/ai-calculation-steps";
+import { CalculationPlayer } from "./CalculationPlayer";
 import {
   calculateValue,
   selectCell,
@@ -131,6 +133,8 @@ export function AILab({ id }: { id: LabId }) {
     [share, setShare] = useState(""),
     [selection, setSelection] = useState<DiagramSelection>(),
     [valueSelection, setValueSelection] = useState<ValueSelection>(),
+    [microMode, setMicroMode] = useState(false),
+    [micro, setMicro] = useState({ key: "", index: 0, playing: false }),
     [selectionVisit, setSelectionVisit] = useState(0),
     [linkedTensorName, setLinkedTensorName] = useState<string>(),
     [panel, setPanel] = useState("讲解"),
@@ -146,6 +150,8 @@ export function AILab({ id }: { id: LabId }) {
     if (valueSelection) calculationBack.current?.focus({ preventScroll: true });
   }, [valueSelection]);
   const closeCalculation = () => {
+    setMicroMode(false);
+    setMicro((m) => ({ ...m, playing: false }));
     setValueSelection(undefined);
     requestAnimationFrame(() => {
       if (returnFocus.current?.isConnected)
@@ -232,16 +238,56 @@ export function AILab({ id }: { id: LabId }) {
         : undefined,
     [id, frame, config, valueSelection, trace, position],
   );
+  const microKey = JSON.stringify([id, config, position, valueSelection]);
+  const microSteps = useMemo(
+    () =>
+      microMode && valueSelection
+        ? calculationSteps(
+            id,
+            frame,
+            config,
+            valueSelection,
+            trace.frames.slice(0, position + 1),
+          )
+        : [],
+    [microMode, id, frame, config, valueSelection, trace, position],
+  );
+  const microIndex =
+    micro.key === microKey
+      ? Math.min(micro.index, Math.max(0, microSteps.length - 1))
+      : 0;
+  const microPlaying =
+    !!calculation && microMode && micro.key === microKey && micro.playing;
+  const currentMicro =
+    calculation && microMode ? microSteps[microIndex] : undefined;
+  const microJump = (index: number) => {
+    setPlaying(false);
+    setMicro({ key: microKey, index, playing: false });
+  };
+  useEffect(() => {
+    if (!microPlaying || microIndex >= microSteps.length - 1) return;
+    const timer = setTimeout(
+      () =>
+        setMicro({
+          key: microKey,
+          index: microIndex + 1,
+          playing: microIndex + 1 < microSteps.length - 1,
+        }),
+      speed,
+    );
+    return () => clearTimeout(timer);
+  }, [microPlaying, microIndex, microKey, microSteps.length, speed]);
   const chooseCell = (
     tensor: import("../engine/ai-labs").Tensor,
     row: number,
     col: number,
   ) => {
     returnFocus.current = document.activeElement as HTMLElement;
+    setMicroMode(false);
     setValueSelection(selectCell(tensor, row, col));
     setPlaying(false);
   };
-  const displayDiagram = calculation?.nodeValues
+  const baseDiagram = calculation?.nodeValues
     ? {
         ...frame.diagram,
         nodes: frame.diagram.nodes?.map((n) => ({
@@ -250,11 +296,53 @@ export function AILab({ id }: { id: LabId }) {
         })),
       }
     : frame.diagram;
+  const reverseMicro = currentMicro?.direction === "backward";
+  const displayDiagram = currentMicro
+    ? {
+        ...baseDiagram,
+        nodes: baseDiagram.nodes?.map((n) => ({
+          ...n,
+          subtitle: currentMicro.nodeValues?.[n.id] ?? n.subtitle,
+        })),
+        edges: baseDiagram.edges?.map((e) => {
+          const flip =
+            id !== "reinforcement-lab" &&
+            (frame.phase === "backward") !== reverseMicro;
+          const active = currentMicro.edges.some(
+            (pair) =>
+              pair.slice().sort().join(":") === [e.from, e.to].sort().join(":"),
+          );
+          return {
+            ...e,
+            from: flip ? e.to : e.from,
+            to: flip ? e.from : e.to,
+            active,
+            label:
+              active && currentMicro.edgeLabel
+                ? currentMicro.edgeLabel
+                : e.label,
+          };
+        }),
+      }
+    : baseDiagram;
+  if (currentMicro && rl)
+    for (const [from, to] of currentMicro.edges) {
+      if (
+        from !== to &&
+        !displayDiagram.edges?.some((e) => e.from === from && e.to === to)
+      )
+        displayDiagram.edges = [
+          ...(displayDiagram.edges || []),
+          { from, to, directed: true, active: true },
+        ];
+    }
+  const pickedField = currentMicro ? currentMicro.field : calculation?.field;
   const chooseParameter = (
     name: string,
     field: ValueSelection["field"] = "after",
   ) => {
     returnFocus.current = document.activeElement as HTMLElement;
+    setMicroMode(false);
     setValueSelection({
       key: "parameter",
       row: 0,
@@ -369,7 +457,7 @@ export function AILab({ id }: { id: LabId }) {
                 ))}
               </select>
               <span>
-                {backward && !rl
+                {(currentMicro ? reverseMicro : backward) && !rl
                   ? "← 梯度反传"
                   : rl
                     ? "行动 → 反馈 → Q 更新"
@@ -402,14 +490,17 @@ export function AILab({ id }: { id: LabId }) {
                     }
                     kind="graph"
                     fitContent
-                    tick={position}
+                    tick={
+                      currentMicro ? position * 10000 + microIndex : position
+                    }
                     effects={effects}
                     milliseconds={speed}
                     selection={
                       !calculation && panel === "联动" ? selection : undefined
                     }
-                    highlights={calculation}
+                    highlights={currentMicro || calculation}
                     onSelect={(value) => {
+                      setMicroMode(false);
                       setValueSelection(undefined);
                       setSelection(value);
                       setLinkedTensorName(undefined);
@@ -450,31 +541,30 @@ export function AILab({ id }: { id: LabId }) {
                     >
                       <span
                         data-term="before"
-                        data-picked={
-                          calculation?.field === "before" || undefined
-                        }
+                        data-picked={pickedField === "before" || undefined}
                       >
                         <small>旧值</small>
                         <strong>{fmt(focus.before)}</strong>
                       </span>
                       <span
                         data-term="gradient"
-                        data-picked={
-                          calculation?.field === "gradient" || undefined
-                        }
+                        data-picked={pickedField === "gradient" || undefined}
                       >
                         <small>{rl ? "方向 −TD" : "梯度 ∇"}</small>
                         <strong>{fmt(focus.gradient)}</strong>
                       </span>
-                      <span data-term="rate">
+                      <span
+                        data-term="rate"
+                        data-picked={
+                          currentMicro?.field === "rate" || undefined
+                        }
+                      >
                         <small>{rl ? "学习率 α" : "学习率 η"}</small>
                         <strong>{config.rate}</strong>
                       </span>
                       <span
                         data-term="after"
-                        data-picked={
-                          calculation?.field === "after" || undefined
-                        }
+                        data-picked={pickedField === "after" || undefined}
                       >
                         <small>{updated ? "新值" : "预览"}</small>
                         <motion.strong
@@ -538,7 +628,10 @@ export function AILab({ id }: { id: LabId }) {
                 <button
                   className="button primary"
                   disabled={position === trace.frames.length - 1}
-                  onClick={() => setPlaying(!playing)}
+                  onClick={() => {
+                    setMicro((m) => ({ ...m, playing: false }));
+                    setPlaying(!playing);
+                  }}
                 >
                   {playing ? <Pause size={17} /> : <Play size={17} />}
                   {playing ? "暂停" : "播放"}
@@ -647,19 +740,50 @@ export function AILab({ id }: { id: LabId }) {
             </div>
             {calculation && (
               <section className="ai-calculation" aria-label="所选数值计算过程">
-                <button
-                  className="text-button calculation-back"
-                  ref={calculationBack}
-                  onClick={closeCalculation}
-                >
-                  ← 返回数值表
-                </button>
-                <AdaptiveNotes
-                  key={`${position}-${JSON.stringify(valueSelection)}`}
-                  className="ai-derivation"
-                  label="数值推导分页"
-                  blocks={calculation.blocks}
-                />
+                <div className="calculation-toolbar">
+                  <button
+                    className="text-button calculation-back"
+                    ref={calculationBack}
+                    onClick={closeCalculation}
+                  >
+                    ← 返回数值表
+                  </button>
+                  <button
+                    className="text-button calculation-mode"
+                    aria-pressed={microMode}
+                    onClick={() => {
+                      setPlaying(false);
+                      setMicroMode(!microMode);
+                      setMicro({ key: microKey, index: 0, playing: false });
+                    }}
+                  >
+                    {microMode ? "完整推导" : "逐步演示"}
+                  </button>
+                </div>
+                {currentMicro ? (
+                  <CalculationPlayer
+                    steps={microSteps}
+                    index={microIndex}
+                    playing={microPlaying}
+                    still={!!still}
+                    onJump={microJump}
+                    onPlay={() => {
+                      setPlaying(false);
+                      setMicro({
+                        key: microKey,
+                        index: microIndex,
+                        playing: !microPlaying,
+                      });
+                    }}
+                  />
+                ) : (
+                  <AdaptiveNotes
+                    key={`${position}-${JSON.stringify(valueSelection)}`}
+                    className="ai-derivation"
+                    label="数值推导分页"
+                    blocks={calculation.blocks}
+                  />
+                )}
               </section>
             )}
             {panel === "讲解" && (
