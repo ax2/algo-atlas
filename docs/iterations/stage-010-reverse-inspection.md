@@ -26,6 +26,9 @@
 - 额外 Chrome 脚本逐页检查三个专题在 1366×600 深色短屏和 360×640 浅色窄屏的推导：无内部溢出、无图形字幕裁切、无运行时/控制台错误。窄屏参数推导从 9/6/4 页降到 5/4/3 页，所有原文和贡献项仍可查看。
 - 截图位于本次任务 outputs：`stage010-*-desktop.png`、`stage010-*-mobile.png`、`stage010-*-short.png`、`stage010-*-narrow.png`；已查看桌面和手机代表截图。以上为 Chrome 自动化与模拟视口，未进行真实手机或其他浏览器验收。
 
-## 发布进度
+## 发布记录
 
-待推送并独立核对 GitHub CI。
+- 功能提交 `1b0f2e00a09ca19c745b4d3bf50efc479ebd5ddb` 已推送至 `ax2/algo-atlas` 的 `main`。
+- 独立核对 [GitHub CI 41181241854](https://github.com/ax2/algo-atlas/actions/runs/41181241854)：success；304 个测试、生产构建、42 项浏览器回归全部通过，无失败或重试。浏览器回归耗时 3.3 分钟，整项 CI 4 分 1 秒。
+- 现有 actions / ubuntu-latest 的运行时代际提示不影响本次测试；本阶段未修改 CI 工作流。
+- CI 结果以独立文档提交回填，功能代码与上述已验证提交一致。
