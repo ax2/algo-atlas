@@ -547,7 +547,7 @@ export default function App() {
               update={update}
             />
           ) : route.view === "cases" ? (
-            <Cases key={route.id} id={route.id} />
+            <Cases key={route.id + "?" + route.params} id={route.id} />
           ) : (
             <Learning data={data} update={update} notify={notify} />
           )}

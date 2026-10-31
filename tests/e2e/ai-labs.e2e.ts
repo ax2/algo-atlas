@@ -74,7 +74,12 @@ for (const id of Object.keys(aiLabs) as LabId[]) {
         .getByRole("textbox", { name: "实验分享链接" })
         .inputValue(),
       saved = await progress.inputValue();
+    await page.getByRole("combobox", { name: "AI 数据场景" }).selectOption("1");
+    await expect(progress).toHaveValue("0");
     await page.goto(url);
+    await expect(progress).toHaveValue(saved);
+    await expect(page.getByRole("combobox", { name: "AI 数据场景" })).toHaveValue("0");
+    await page.reload();
     await expect(progress).toHaveValue(saved);
     await page.getByRole("combobox", { name: "AI 数据场景" }).selectOption("1");
     await expect(progress).toHaveValue("0");
