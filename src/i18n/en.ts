@@ -2953,5 +2953,12 @@ const english: Record<number, string> = {
   2951: "Entries",
   2952: "Prefix sum",
   2953: "Jump to episode",
+  2954: "Follow ZiCode",
+  2955: "Project homepage",
+  2956: "Explore with ZiCode",
+  2957: "Follow product updates, algorithm visualizations and open-source development notes.",
+  2958: "ZiCode WeChat official account QR code",
+  2959: "Scan in WeChat to follow ZiCode",
+  2960: "Back to ZiCode",
 };
 export default english;

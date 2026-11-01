@@ -5686,3 +5686,11 @@ main {
     grid-template-rows: minmax(0, 1fr) 250px;
   }
 }
+.creator-entry { flex-shrink: 0; padding: 10px 20px; border-top: 1px solid var(--border); display: grid; gap: 9px; font-size: 12px; }
+.creator-entry button, .creator-entry a { display: flex; align-items: center; gap: 8px; color: var(--muted); text-decoration: none; text-align: left; }
+.creator-entry button:hover, .creator-entry a:hover { color: var(--mint); }
+.creator-card { display: grid; gap: 12px; }
+.creator-card figure { margin: 0; text-align: center; }
+.creator-card img { width: min(190px, 45vh); height: auto; border-radius: 6px; background: white; }
+.creator-card figcaption { color: var(--muted); font-size: 13px; margin-top: 5px; }
+.creator-card .button { justify-content: center; text-decoration: none; }

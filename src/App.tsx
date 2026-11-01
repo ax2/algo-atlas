@@ -72,7 +72,7 @@ export default function App() {
       topicById[readRoute().id]?.category || "sorting",
     ]),
     [menu, setMenu] = useState(false),
-    [dialog, setDialog] = useState<"notes" | "share" | null>(null),
+    [dialog, setDialog] = useState<"notes" | "share" | "follow" | null>(null),
     [toast, setToast] = useState(""),
     [theme, setTheme] = useState(() => {
       try {
@@ -343,6 +343,10 @@ export default function App() {
             })}
           </div>
         </nav>
+        <div className="creator-entry">
+          <button onClick={() => setDialog("follow")}><Share2 size={16} />关注字与码</button>
+          <a href="https://www.zicode.com/software/algo-atlas/">项目主页 <ExternalLink size={14} /></a>
+        </div>
         <footer className="sidebar-footer">
           <button
             className="language-toggle"
@@ -652,7 +656,7 @@ export default function App() {
           >
             <header>
               <h2 id="dialog-title">
-                {dialog === "notes"
+                {dialog === "follow" ? "与字与码一起探索" : dialog === "notes"
                   ? `${topic.name} · 学习笔记`
                   : "分享这一刻的理解"}
               </h2>
@@ -665,7 +669,17 @@ export default function App() {
                 <X size={21} />
               </button>
             </header>
-            {dialog === "notes" ? (
+            {dialog === "follow" ? (
+              <div className="creator-card">
+                <p>关注产品更新、算法图解和开源项目的开发记录。</p>
+                <figure>
+                  <img src={`${import.meta.env.BASE_URL}wechat-zicode.webp`} alt="字与码微信公众号二维码" width="258" height="258" />
+                  <figcaption>微信扫码关注「字与码」</figcaption>
+                </figure>
+                <a className="button primary" href="https://x.com/ax2_zicode" target="_blank" rel="noopener noreferrer">X · @ax2_zicode <ExternalLink size={16} /></a>
+                <a className="button" href="https://www.zicode.com/">返回字与码主站</a>
+              </div>
+            ) : dialog === "notes" ? (
               <>
                 <p>记下自己的解释、反例与未解的问题。自动保存到当前浏览器。</p>
                 <textarea
