@@ -3,9 +3,11 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Frame, Trace } from "../engine/model";
 import type { Topic } from "../content/types";
 import { AdaptiveNotes, type NoteBlock } from "./AdaptiveNotes";
+import { t } from "../i18n/text";
 
 // Break long prose/bit strings into complete, reachable pages rather than clipping.
 function chunks(text: string, size = 80): string[] {
+  text = t(text);
   const pages: string[] = [];
   let page = "",
     lines = 1,
@@ -73,7 +75,10 @@ export function InlineData({
   const [listIndex, setListIndex] = useState(0),
     [page, setPage] = useState(0);
   const list = lists?.[Math.min(listIndex, lists.length - 1)];
-  const pages = chunks((list?.items || items).join(" · ") || "空", 38);
+  const pages = chunks(
+    (list?.items || items).map((item) => t(item)).join(" · ") || "空",
+    38,
+  );
   const current = Math.min(page, pages.length - 1);
   return (
     <div className={`inline-data ${className}`}>
@@ -194,7 +199,10 @@ export function ExperimentNotes({
           .map(([k, v]) => `${k}：${v}`)
           .join("；") || "本步骤无额外计数。",
       ),
-      ...detail("完整原始输入", (trace.source || []).join(" · ")),
+      ...detail(
+        "完整原始输入",
+        (trace.source || []).map((item) => t(item)).join(" · "),
+      ),
       ...detail("输入说明", topic.inputHint),
       ...detail("实验说明", trace.caption),
       ...(frame.tables || []).flatMap((t) =>
@@ -205,7 +213,10 @@ export function ExperimentNotes({
       ? detail("尚未结束", "单步前进或拖动进度至末尾，即可核对最终输出。")
       : trace.output
         ? [
-            ...detail(trace.output.title, trace.output.summary.join("\n")),
+            ...detail(
+              trace.output.title,
+              trace.output.summary.map((item) => t(item)).join("\n"),
+            ),
             ...(trace.output.columns
               ? tableBlocks(
                   "结果明细",

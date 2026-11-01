@@ -36,6 +36,84 @@ function checkSteps(steps: CalculationStep[]) {
   }
 }
 describe("calculation micro traces", () => {
+  it("backpropagation starts at loss and expands local derivatives, chain products and accumulated paths", () => {
+    const config = { ...defaults("neural-training"), rounds: 1 };
+    const frame = runAILab("neural-training", config).frames.find(
+      (f) => f.phase === "backward",
+    )!;
+    const steps = calculationSteps("neural-training", frame, config, {
+      key: "parameter",
+      row: 0,
+      col: 0,
+      parameter: "W1[0,0]",
+      field: "gradient",
+    });
+    expect(steps[0]).toMatchObject({
+      operation: "seed",
+      stage: "loss",
+      direction: "backward",
+    });
+    expect(output(steps[0])).toBe(1);
+    expect(new Set(steps.map((s) => s.stage))).toEqual(
+      new Set(["loss", "z", "h0", "update"]),
+    );
+    for (let i = 1; i < steps.length - 3; i += 3) {
+      const [local, product, total] = steps.slice(i, i + 3);
+      expect([local.operation, product.operation, total.operation]).toEqual([
+        "derivative",
+        "mul",
+        "add",
+      ]);
+      expect(local.edgeLabel).toMatch(/^∂v\/∂u /);
+      expect(Number(output(product))).toBeCloseTo(
+        Number(product.cells[0].value) * Number(output(local)),
+        13,
+      );
+      expect(total.cells[1].id).toBe(product.result);
+      expect(total.cells[0].caption).toBe("已有累积");
+      if (local.rule?.startsWith("tanh"))
+        expect(Number(output(local))).toBeCloseTo(
+          1 - Number(local.cells[0].value) ** 2,
+          13,
+        );
+    }
+    const weights = steps.filter(
+      (s) => s.operation === "add" && s.field === "gradient",
+    );
+    expect(weights).toHaveLength(4); // one shared-weight contribution per sample
+    expect(Number(weights[1].cells[0].value)).toBe(Number(output(weights[0])));
+    expect(Number(output(weights.at(-1)!))).toBeCloseTo(
+      frame.updates.find((p) => p.name === "W1[0,0]")!.gradient,
+      13,
+    );
+    expect(steps.slice(-3).every((s) => s.stage === "update")).toBe(true);
+    expect(
+      steps.some((s) =>
+        s.edges.some(([from, to]) => from === "loss" && to === "z"),
+      ),
+    ).toBe(true);
+    expect(steps.some((s) => s.edges.some((edge) => edge.includes("p")))).toBe(
+      false,
+    );
+  });
+  it("Transformer residual gradients use their real skip edge instead of routing through attention", () => {
+    const config = { ...defaults("transformer-lab"), rounds: 1 };
+    const frame = runAILab("transformer-lab", config).frames.find(
+      (f) => f.phase === "backward",
+    )!;
+    const steps = calculationSteps("transformer-lab", frame, config, {
+      key: "parameter",
+      row: 0,
+      col: 0,
+      parameter: "E[0,0]",
+      field: "gradient",
+    });
+    const skip = steps.filter((s) =>
+      s.edges.some(([from, to]) => from === "4" && to === "1"),
+    );
+    expect(skip.length).toBeGreaterThan(0);
+    expect(skip.every((s) => !s.edges.flat().includes("3"))).toBe(true);
+  });
   for (const id of ["neural-training", "transformer-lab"] as const)
     it(`${id}: every tensor cell finishes at its real value with valid formula references`, () => {
       const config = { ...defaults(id), rounds: 1 },
@@ -111,7 +189,7 @@ describe("calculation micro traces", () => {
           parameter: frame.updates[0].name,
         }).some((s) => s.direction === "backward" || s.operation === "update"),
       ).toBe(false);
-    });
+    }, 30000);
   it("Q micro traces distinguish preview, terminal targets and historical writes", () => {
     const config = defaults("reinforcement-lab"),
       trace = runAILab("reinforcement-lab", config);

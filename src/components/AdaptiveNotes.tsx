@@ -1,4 +1,6 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState, useMemo } from "react";
+import { t } from "../i18n/text";
+import { useLocale } from "../i18n/react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type NoteCell =
@@ -169,7 +171,7 @@ function paginate(
         text && low < text.length
           ? {
               ...block,
-              title: original.title + "（续）",
+              title: original.title + t("（续）"),
               text: text.slice(low).join(""),
             }
           : block.rows && low < block.rows.length
@@ -182,7 +184,7 @@ function paginate(
 }
 
 export function AdaptiveNotes({
-  blocks,
+  blocks: originalBlocks,
   className,
   label,
   onAction,
@@ -192,6 +194,29 @@ export function AdaptiveNotes({
   label: string;
   onAction?: (action: string) => void;
 }) {
+  const locale = useLocale();
+  const blocks = useMemo(
+    () =>
+      originalBlocks.map((b) => ({
+        ...b,
+        title: t(b.title),
+        text: b.text === undefined ? undefined : t(b.text),
+        columns: b.columns?.map((c) => t(c)),
+        rows: b.rows?.map((row) =>
+          row.map((c) =>
+            typeof c === "string"
+              ? t(c)
+              : typeof c === "object"
+                ? {
+                    ...c,
+                    value: typeof c.value === "string" ? t(c.value) : c.value,
+                  }
+                : c,
+          ),
+        ),
+      })),
+    [originalBlocks, locale],
+  );
   const deck = useRef<HTMLElement>(null),
     measure = useRef<HTMLDivElement>(null),
     pagerProbe = useRef<HTMLDivElement>(null);

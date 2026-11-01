@@ -134,7 +134,7 @@ export function Learning({
                 {topicById[id].name}
                 <span>{topicById[id].en}</span>
               </h3>
-              <p>{tab === "notes" ? data.notes[id] : topicById[id].intro}</p>
+              <p translate={tab === "notes" ? "no" : undefined}>{tab === "notes" ? data.notes[id] : topicById[id].intro}</p>
             </div>
             <ArrowUpRight size={18} />
           </button>

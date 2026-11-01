@@ -150,7 +150,21 @@ test("neural arithmetic playback maps cells and edges, pauses independently and 
     config,
     { key: "parameter", row: 0, col: 0, parameter: name, field: "gradient" },
   );
-  for (let i = 0; i < gradientSteps.length; i++) {
+  const gradientSamples = [
+    ...new Set([
+      0,
+      gradientSteps.length - 1,
+      ...gradientSteps.flatMap((s, i) =>
+        i === 0 || s.stage !== gradientSteps[i - 1].stage
+          ? [i, Math.min(i + 2, gradientSteps.length - 1)]
+          : [],
+      ),
+      ...["derivative", "mul", "add"].map((op) =>
+        gradientSteps.findIndex((s) => s.operation === op),
+      ),
+    ]),
+  ].filter((i) => i >= 0);
+  for (const i of gradientSamples) {
     await progress(page).fill(String(i));
     await bounded(page);
     const s = gradientSteps[i];
@@ -159,17 +173,16 @@ test("neural arithmetic playback maps cells and edges, pauses independently and 
         "data-picked",
         "true",
       );
-    if (s.direction === "backward")
-      await expect(page.locator('[data-edge="h0-x0"]')).toHaveClass(
-        /data-selected/,
+    for (const [a, b] of s.edges) {
+      const edge = page.locator(
+        `[data-edge="${a}-${b}"].data-selected, [data-edge="${b}-${a}"].data-selected`,
       );
-    if (s.edgeLabel)
-      await expect(
-        page.locator(
-          `[data-edge="${s.direction === "backward" ? "h0-x0" : "x0-h0"}"] .edge-weight`,
-        ),
-      ).toHaveText(s.edgeLabel);
+      await expect(edge).toHaveClass(/data-selected/);
+      if (s.edgeLabel)
+        await expect(edge.locator(".edge-weight")).toHaveText(s.edgeLabel);
+    }
   }
+  await progress(page).fill(String(gradientSteps.length - 1));
   await expect(page.locator(".micro-cell")).toHaveCount(4);
   await capture(page, "neural-update");
   await phase(page, "backward");
@@ -178,7 +191,10 @@ test("neural arithmetic playback maps cells and edges, pauses independently and 
     page.getByRole("button", { name: "播放计算演示", exact: true }),
   ).toBeVisible();
   await progress(page).fill(String(gradientSteps.length - 1));
-  await expect(page.locator(".micro-controls")).toContainText("预览");
+  await expect(page.locator(".micro-controls > span")).toHaveAttribute(
+    "title",
+    "参数更新预览",
+  );
   await phase(page, "input");
   await expect(progress(page)).toHaveValue("0");
   await expect(page.locator(".calculation-player")).toHaveAttribute(

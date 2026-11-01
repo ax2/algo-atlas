@@ -325,15 +325,25 @@ export function AILab({ id }: { id: LabId }) {
         }),
       }
     : baseDiagram;
-  if (currentMicro && rl)
+  if (currentMicro)
     for (const [from, to] of currentMicro.edges) {
       if (
         from !== to &&
-        !displayDiagram.edges?.some((e) => e.from === from && e.to === to)
+        !displayDiagram.edges?.some(
+          (e) =>
+            (e.from === from && e.to === to) ||
+            (!rl && e.from === to && e.to === from),
+        )
       )
         displayDiagram.edges = [
           ...(displayDiagram.edges || []),
-          { from, to, directed: true, active: true },
+          {
+            from,
+            to,
+            directed: true,
+            active: true,
+            label: currentMicro.edgeLabel,
+          },
         ];
     }
   const pickedField = currentMicro ? currentMicro.field : calculation?.field;
@@ -766,6 +776,9 @@ export function AILab({ id }: { id: LabId }) {
                     index={microIndex}
                     playing={microPlaying}
                     still={!!still}
+                    stageNames={Object.fromEntries(
+                      (frame.diagram.nodes || []).map((n) => [n.id, n.label]),
+                    )}
                     onJump={microJump}
                     onPlay={() => {
                       setPlaying(false);

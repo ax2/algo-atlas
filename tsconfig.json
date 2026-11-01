@@ -12,6 +12,8 @@
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
+    "jsxImportSource": "@atlas-i18n",
+    "paths": { "@atlas-i18n/*": ["./src/i18n/*"] },
     "strict": true,
     "types": ["vite/client", "node"]
   },

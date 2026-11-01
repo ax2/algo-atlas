@@ -41,6 +41,8 @@ import { Cases } from "./components/Cases";
 import { PracticeLibrary } from "./components/PracticeLibrary";
 import { problems } from "./content/problems";
 import { cases } from "./content/cases";
+import { useLocale } from "./i18n/react";
+import { setLocale, t } from "./i18n/text";
 const categoryIcons = [
   Layers3,
   ChartNoAxesCombined,
@@ -58,6 +60,10 @@ const tabs = [
   ["practice", "课后练习", GraduationCap],
 ] as const;
 export default function App() {
+  const locale = useLocale();
+  useEffect(() => {
+    document.documentElement.lang = locale === "en" ? "en" : "zh-CN";
+  }, [locale]);
   const [route, setRoute] = useState(readRoute),
     [data, setData] = useState(localRepository.load),
     [query, setQuery] = useState(""),
@@ -139,9 +145,9 @@ export default function App() {
   useEffect(() => {
     document.title =
       route.view === "lesson"
-        ? `${topic.name} · Algo Atlas`
-        : "Algo Atlas · 算法图谱";
-  }, [route.view, topic.name]);
+        ? `${t(topic.name)} · Algo Atlas`
+        : t("Algo Atlas · 算法图谱");
+  }, [route.view, topic.name, locale]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
@@ -338,6 +344,16 @@ export default function App() {
           </div>
         </nav>
         <footer className="sidebar-footer">
+          <button
+            className="language-toggle"
+            aria-label={
+              locale === "zh" ? "Switch to English" : "Switch to Chinese"
+            }
+            onClick={() => setLocale(locale === "zh" ? "en" : "zh")}
+            translate="no"
+          >
+            {locale === "zh" ? "EN" : "中文"}
+          </button>
           <span className="local-dot" />
           本地学习模式
           <button

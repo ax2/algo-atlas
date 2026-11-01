@@ -14,6 +14,7 @@ export type StepCell = {
   role: "tensor" | "parameter" | "temporary";
   nodes: string[];
   sample?: number;
+  caption?: string;
 };
 export type CalculationStep = {
   title: string;
@@ -27,6 +28,8 @@ export type CalculationStep = {
   direction: "forward" | "backward";
   nodeValues?: Record<string, string>;
   edgeLabel?: string;
+  rule?: string;
+  stage?: string;
   field?: "before" | "gradient" | "rate" | "after";
 };
 const unique = <T>(xs: T[]) => [...new Set(xs)];
@@ -382,12 +385,34 @@ export function calculationSteps(
         cell(
           v.operation === "input" ? `常数 ${v.value}` : `t${++serial}`,
           Number.isFinite(v.value) ? v.value : "−∞",
+          v.operation === "input" ? [] : targetNodes,
         ),
       );
       if (v.operation === "input") names.get(v)!.label = "常数";
     }
     return names.get(v)!;
   };
+  // Give each internal scalar its enclosing tensor/operator and sample, stopping
+  // at named boundaries. This keeps loss, activation and projection gradients
+  // on their actual layers instead of painting the selected weight throughout.
+  const assigned = new Set<Scalar>();
+  for (const rows of Object.values(model.inspect))
+    for (const row of rows)
+      for (const root of row) {
+        const owner = named(root);
+        const assign = (v: Scalar) => {
+          if (v !== root && keys.has(v)) return;
+          if (assigned.has(v) || v.operation === "input") return;
+          assigned.add(v);
+          if (v !== root) {
+            const c = named(v);
+            c.nodes = owner.nodes;
+            c.sample = owner.sample;
+          }
+          v.parents.forEach(([parent]) => assign(parent));
+        };
+        assign(root);
+      }
   if (selection.parameter) {
     const p = detail.update;
     if (!p || !["backward", "update"].includes(frame.phase)) {
@@ -403,54 +428,184 @@ export function calculationSteps(
       return steps;
     }
     const parameter = model.params.find((p) => p.name === selection.parameter)!;
-    let gradient = cell("∇θ·初始", 0, binding.nodes);
-    read(gradient, "每轮反传先清零梯度，再累加所有使用位置的贡献。");
+    const depends = new Map<Scalar, boolean>();
+    const reaches = (v: Scalar): boolean => {
+      if (!depends.has(v))
+        depends.set(
+          v,
+          v === parameter.node || v.parents.some(([parent]) => reaches(parent)),
+        );
+      return depends.get(v)!;
+    };
+    reaches(model.loss);
+    const gradientCells = new Map<Scalar, StepCell>();
+    const lossCell = named(model.loss);
+    const seed = cell("∂L/∂L", 1, lossCell.nodes, "tensor");
+    gradientCells.set(model.loss, seed);
+    emit(
+      "从损失开始",
+      "seed",
+      [],
+      seed,
+      ["∂L/∂L = ", ref(seed)],
+      "损失对自身的导数是 1；其余梯度从 0 开始。沿所有通向所选参数的路径按逆拓扑顺序回传。",
+      "backward",
+    );
+    steps.at(-1)!.stage = lossCell.nodes.at(-1);
+    steps.at(-1)!.rule = "g(L) = 1";
+    let gradient = cell(`∂L/∂${p.name}`, 0, binding.nodes, "tensor");
+    // Keep the actual dependency, including residual skips and fused loss→logit.
+    // Routing via intervening display nodes would imply derivatives that did not
+    // occur. The renderer adds a transient direct edge when the overview omits it.
+    const path = (from: string[], to: string[]): [string, string][] =>
+      from.at(-1) && to.at(-1) && from.at(-1) !== to.at(-1)
+        ? [[from.at(-1)!, to.at(-1)!]]
+        : [];
     model.loss.backward((parent, upstream, local, source) => {
-      if (parent !== parameter.node) return;
+      if (!reaches(parent)) return;
       const n = steps.length,
-        sourceCell = named(source);
-      const up = cell(`∂L/∂${sourceCell.label}`, upstream, binding.nodes),
-        derivative = cell(`局部导数 ${n}`, local, binding.nodes);
+        sourceCell = named(source),
+        parentCell = named(parent);
+      const up = {
+          ...cell(
+            `∂L/∂${sourceCell.label}`,
+            upstream,
+            sourceCell.nodes,
+            "tensor",
+          ),
+          sample: sourceCell.sample,
+        },
+        derivative = cell(
+          `∂${sourceCell.label}/∂${parentCell.label}`,
+          local,
+          parentCell.nodes,
+          "tensor",
+        );
+      derivative.sample = parentCell.sample ?? sourceCell.sample;
+      up.caption = "上游梯度";
+      derivative.caption = "局部导数";
       const other =
         source.operation === "mul"
-          ? source.parents.find(([node]) => node !== parent)?.[0]
+          ? source.parents[source.parents[0][0] === parent ? 1 : 0]?.[0]
           : undefined;
-      if (other) {
-        const input = named(other);
-        derivative.label = input.label;
-        derivative.id = `局部:${input.id}:${n}`;
-        derivative.nodes = input.nodes;
-        derivative.role = input.role;
-        derivative.sample = input.sample;
+      const argument = named(parent),
+        sourceValue = { ...sourceCell, id: `value:${sourceCell.id}` };
+      let operands: StepCell[] = [],
+        parts: CalculationStep["parts"] = [ref(derivative)];
+      let rule = "∂(u+v)/∂u = 1";
+      if (source.operation === "mul" && other) {
+        operands = [named(other)];
+        parts = [ref(operands[0]), " = ", ref(derivative)];
+        rule = "∂(u×v)/∂u = v";
+      } else if (source.operation === "sigmoid") {
+        operands = [sourceValue];
+        parts = [
+          ref(sourceValue),
+          " × (1 − ",
+          ref(sourceValue),
+          ") = ",
+          ref(derivative),
+        ];
+        rule = "σ′(u) = σ(u)(1 − σ(u))";
+      } else if (source.operation === "tanh") {
+        operands = [sourceValue];
+        parts = ["1 − ", ref(sourceValue), "² = ", ref(derivative)];
+        rule = "tanh′(u) = 1 − tanh²(u)";
+      } else if (source.operation === "relu") {
+        operands = [argument];
+        parts = [ref(argument), " > 0 ? 1 : 0 = ", ref(derivative)];
+        rule = "ReLU′(u) = 1[u>0]";
+      } else if (source.operation === "log") {
+        operands = [argument];
+        parts = ["1 / ", ref(argument), " = ", ref(derivative)];
+        rule = "log′(u) = 1/u";
+      } else if (source.operation === "exp") {
+        operands = [sourceValue];
+        parts = [ref(sourceValue), " = ", ref(derivative)];
+        rule = "exp′(u) = exp(u)";
+      } else if (source.operation.startsWith("pow:")) {
+        const exponent = Number(source.operation.slice(4));
+        operands = [argument];
+        parts = [
+          `${exponent} × (`,
+          ref(argument),
+          `)^(${exponent - 1}) = `,
+          ref(derivative),
+        ];
+        rule = `∂u^${exponent}/∂u = ${exponent}u^(${exponent - 1})`;
       }
+      const edges =
+        parent === parameter.node
+          ? binding.edges
+          : path(sourceCell.nodes, parentCell.nodes);
+      const decorate = () => {
+        const step = steps.at(-1)!;
+        step.edges = edges;
+        step.nodes = unique([...step.nodes, ...edges.flat()]);
+        step.stage = sourceCell.nodes.at(-1);
+        step.edgeLabel = `${step.operation === "derivative" ? "∂v/∂u" : step.operation === "add" ? "∇" : "δ∇"} ${Number(step.cells.find((c) => c.id === step.result)!.value).toFixed(4)}`;
+      };
+      emit(
+        "求局部导数",
+        "derivative",
+        operands,
+        derivative,
+        parts,
+        `${sourceCell.label} 对 ${parentCell.label} 求导：只看当前运算，其他输入暂时视作常量。`,
+        "backward",
+      );
+      decorate();
+      steps.at(-1)!.rule = rule;
       const contribution = binary(
         "mul",
         up,
         derivative,
         upstream * local,
-        cell(`贡献 ${n}`, upstream * local, binding.nodes),
+        cell(
+          `δg(${parentCell.label})·${n}`,
+          upstream * local,
+          parentCell.nodes,
+          "tensor",
+        ),
         "backward",
-        "gradient",
+        parent === parameter.node ? "gradient" : undefined,
       );
       steps.at(-1)!.note =
         "上游梯度 × 局部导数；局部导数若来自乘法，就是另一个操作数。按实际反向遍历顺序回放。";
-      steps.at(-1)!.edges = binding.edges;
-      gradient = binary(
+      decorate();
+      steps.at(-1)!.rule = "δg(u) = g(v) × ∂v/∂u";
+      contribution.caption = "本路贡献";
+      const previous =
+        gradientCells.get(parent) ||
+        cell(`g(${parentCell.label})·旧`, 0, parentCell.nodes, "tensor");
+      const oldGradient = { ...previous, caption: "已有累积" };
+      const accumulated = binary(
         "add",
-        gradient,
+        oldGradient,
         contribution,
-        Number(gradient.value) + upstream * local,
+        parent.grad,
         cell(
-          `∇θ·累计 ${n}`,
-          Number(gradient.value) + upstream * local,
-          binding.nodes,
+          `g(${parentCell.label})·${n}`,
+          parent.grad,
+          parentCell.nodes,
+          "tensor",
         ),
         "backward",
-        "gradient",
+        parent === parameter.node ? "gradient" : undefined,
       );
-      steps.at(-1)!.edges = binding.edges;
+      decorate();
+      steps.at(-1)!.rule = "g(u) ← g(u) + δg(u)";
+      accumulated.caption = "累计梯度";
+      steps.at(-1)!.note =
+        "共享节点可能收到多条路径的贡献，必须累加，不能覆盖；全部下游贡献到齐后再向更早一层传播。";
+      gradientCells.set(parent, accumulated);
+      if (parent === parameter.node) gradient = accumulated;
     });
+    const updateStart = steps.length;
     finishUpdate(gradient);
+    steps.slice(updateStart).forEach((s) => {
+      s.stage = "update";
+    });
     return steps;
   }
   const available = [

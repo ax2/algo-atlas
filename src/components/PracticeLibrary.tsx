@@ -13,6 +13,7 @@ import { problems, problemById, referenceCode } from "../content/problems";
 import { topicById, topics } from "../content/catalog";
 import { levels } from "../content/types";
 import { navigate } from "../services/routing";
+import { t as translate } from "../i18n/text";
 import type { LearningData } from "../services/learning";
 export function PracticeLibrary({
   id,
@@ -44,7 +45,7 @@ export function PracticeLibrary({
       (!topicFilter || p.topics.includes(topicFilter)) &&
       (status === "all" ||
         (status === "done" ? done.includes(p.id) : !done.includes(p.id))) &&
-      `${p.title} ${p.id} ${p.statement} ${p.topics.map((t) => topicById[t]?.name).join(" ")}`
+      `${p.title} ${p.id} ${p.statement} ${translate(p.title)} ${translate(p.statement)} ${p.topics.map((t) => `${topicById[t]?.name} ${topicById[t]?.en}`).join(" ")}`
         .toLowerCase()
         .includes(query.trim().toLowerCase()),
   );

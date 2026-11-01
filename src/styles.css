@@ -5450,6 +5450,39 @@ main {
   gap: 4px;
   flex-shrink: 0;
 }
+.micro-rule {
+  font:
+    11px/1.2 ui-monospace,
+    monospace;
+  color: var(--muted);
+  flex-shrink: 0;
+  text-align: center;
+  border: 0;
+  padding: 0;
+}
+.micro-rule:hover {
+  color: var(--mint);
+}
+.micro-explanation {
+  flex: 1;
+  min-height: 0;
+}
+.language-toggle {
+  padding: 5px 7px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--mint);
+  font-size: 11px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+#section-experiment .micro-stage {
+  min-width: 0;
+  width: 85px;
+  padding: 2px;
+  font-size: 10px;
+  height: 25px;
+}
 .micro-controls button {
   display: flex;
   align-items: center;
@@ -5527,7 +5560,7 @@ main {
   color: var(--text);
 }
 #section-experiment .micro-timeline {
-  height: 10px;
+  height: 16px;
   width: 100%;
   margin: 0;
   flex-shrink: 0;
@@ -5537,7 +5570,7 @@ main {
   line-height: 1.6;
   margin: 4px 0;
 }
-@container (max-height: 180px) {
+@container (max-height: 259px) {
   .micro-note {
     display: none;
   }
@@ -5635,6 +5668,6 @@ main {
 }
 @media (max-width: 760px) {
   #section-experiment.case-experiment .single-screen[data-inspecting="true"] {
-    grid-template-rows: minmax(0, 1fr) 200px;
+    grid-template-rows: minmax(0, 1fr) 250px;
   }
 }

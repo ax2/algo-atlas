@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { t } from "../i18n/text";
 import {
   ArrowUpRight,
   BookOpen,
@@ -29,12 +30,14 @@ export function Principles({ topic }: { topic: Topic }) {
         </p>
         <h2>用在什么地方？</h2>
         <div className="use-list">
-          {topic.use.split("、").map((u, i) => (
-            <div key={u}>
-              <span>0{i + 1}</span>
-              <strong>{u}</strong>
-            </div>
-          ))}
+          {t(topic.use)
+            .split(/[、,]/)
+            .map((u, i) => (
+              <div key={u}>
+                <span>0{i + 1}</span>
+                <strong>{u}</strong>
+              </div>
+            ))}
         </div>
         <h2>再深入一步</h2>
         <p>{topic.analysis}</p>
@@ -249,7 +252,9 @@ export function Practice({
           </div>
         )}
         <h2>动手实验任务</h2>
-        <a className="button primary" href={`#/practice?topic=${topic.id}`}>进入本课专题练习库 →</a>
+        <a className="button primary" href={`#/practice?topic=${topic.id}`}>
+          进入本课专题练习库 →
+        </a>
         <ol className="task-list">
           <li>先写下对下一步状态的预测，再点击“单步”。</li>
           <li>找到至少一帧，解释它如何维护“{topic.invariant}”。</li>
@@ -286,7 +291,7 @@ export function Practice({
               复制
             </button>
             <pre>
-              <code>{engineSource(topic.id)}</code>
+              <code translate="no">{engineSource(topic.id)}</code>
             </pre>
           </div>
         )}

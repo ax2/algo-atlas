@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { t } from "../i18n/text";
 import { Copy, Code2, Terminal } from "lucide-react";
 import type { Topic } from "../content/types";
 import { implementations } from "../content/implementations";
@@ -18,7 +19,7 @@ export function Implementation({
     language === "javascript"
       ? `console.log(solve(...${JSON.stringify(example.args)}));`
       : `import json\nprint(solve(*json.loads(${JSON.stringify(JSON.stringify(example.args))})))`;
-  const code = implementation[language] + "\n\n" + call;
+  const code = t(implementation[language]) + "\n\n" + call;
   return (
     <div className="implementation-grid">
       <article className="article implementation-overview">

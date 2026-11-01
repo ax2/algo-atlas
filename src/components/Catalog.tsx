@@ -3,6 +3,7 @@ import { ArrowUpRight, Star, Search, ArrowRight } from "lucide-react";
 import { topics } from "../content/catalog";
 import { categories, levels } from "../content/types";
 import { navigate } from "../services/routing";
+import { t as translate } from "../i18n/text";
 export function Catalog({
   query,
   setQuery,
@@ -23,7 +24,7 @@ export function Catalog({
         (!category || t.category === category) &&
         (level === "all" || t.level === +level) &&
         (!onlyFav || favorites.includes(t.id)) &&
-        `${t.name} ${t.en} ${t.id} ${t.intro} ${t.use}`
+        `${t.name} ${t.en} ${t.id} ${translate(t.intro)} ${translate(t.use)} ${t.intro} ${t.use}`
           .toLowerCase()
           .includes(query.trim().toLowerCase()),
     )

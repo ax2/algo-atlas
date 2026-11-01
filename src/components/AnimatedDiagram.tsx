@@ -1,6 +1,7 @@
 import { useId } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useMotionPreference } from "../services/motion-preference";
+import { t } from "../i18n/text";
 import type {
   Frame,
   Trace,
@@ -15,7 +16,7 @@ const nodeWidth = (n: Node) =>
     ? 18
     : Math.max(
         46,
-        [...n.label].reduce(
+        [...t(n.label)].reduce(
           (width, c) => width + (/[^\x00-\xff]/.test(c) ? 14 : 8.2),
           20,
         ),
@@ -215,7 +216,7 @@ function contentBounds(nodes: Node[], edges: Edge[]) {
   if (!nodes.length) return { x: 0, y: 0, width: 220, height: 140 };
   const points: { x: number; y: number }[] = [];
   const textWidth = (text: string, size: number) =>
-    Array.from(text).reduce(
+    Array.from(t(text)).reduce(
       (w, c) => w + (/[^\x00-\xff]/.test(c) ? size : size * 0.62),
       0,
     );
@@ -294,7 +295,7 @@ function GraphScene({
       data-content-fit={fitContent || undefined}
       transition={{ duration, ease: travel }}
       role="img"
-      aria-label={frame.title + "：" + frame.detail}
+      aria-label={t(frame.title) + ": " + t(frame.detail)}
     >
       <defs>
         <filter id={glow} x="-100%" y="-100%" width="300%" height="300%">
@@ -500,7 +501,7 @@ function BarsScene({
       className="bars-svg motion-bars"
       viewBox="0 0 680 300"
       role="img"
-      aria-label={frame.title + "：" + frame.values.join(", ")}
+      aria-label={t(frame.title) + ": " + frame.values.join(", ")}
     >
       <defs>
         <linearGradient id={`${glow}-bar`} x1="0" y1="0" x2="1" y2="0">
