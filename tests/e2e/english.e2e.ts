@@ -65,6 +65,54 @@ test.beforeEach(async ({ page }) => {
   );
   await page.emulateMedia({ reducedMotion: "reduce" });
 });
+
+test("live locale switch preserves a paused calculation", async ({
+  page,
+}, info) => {
+  await page.goto("/#/cases/neural-training");
+  await page
+    .getByRole("combobox", { name: "Training stage", exact: true })
+    .selectOption("backward");
+  await page.getByRole("button", { name: "Parameters", exact: true }).click();
+  const row = page
+    .locator(".ai-ledger .note-page:not(.note-measure) tbody tr")
+    .first();
+  for (let n = 0; n < 15 && !(await row.count()); n++)
+    await page
+      .locator(".ai-ledger .experiment-pager:not(.pagination-probe) button")
+      .last()
+      .click();
+  await row.locator("td").nth(2).getByRole("button").click();
+  await page.getByRole("button", { name: "Step-by-step", exact: true }).click();
+  const timeline = page.locator(".micro-timeline");
+  const index = String(Number(await timeline.getAttribute("max")) - 3);
+  await timeline.fill(index);
+  const values = await page.locator(".micro-cell strong").allTextContents();
+  const openMenu = async (label: string) => {
+    if (info.project.name === "mobile")
+      await page.getByRole("button", { name: label, exact: true }).click();
+  };
+  await openMenu("Open navigation");
+  await page
+    .getByRole("button", { name: "Switch to Chinese", exact: true })
+    .click();
+  await expect(page.locator(".micro-cells")).toContainText("已有累积");
+  await expect(timeline).toHaveValue(index);
+  await page
+    .getByRole("button", { name: "Switch to English", exact: true })
+    .click();
+  await expect(page.locator(".micro-cells")).toContainText("Previous total");
+  if (info.project.name === "mobile")
+    await page
+      .getByRole("button", { name: "Close sidebar", exact: true })
+      .click();
+  await expect(timeline).toHaveValue(index);
+  expect(await page.locator(".micro-cell strong").allTextContents()).toEqual(
+    values,
+  );
+  await expect.poll(() => untranslated(page)).toEqual([]);
+  await bounded(page);
+});
 test("English Q updates, settings and light theme remain readable", async ({
   page,
 }, info) => {
