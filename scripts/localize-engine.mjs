@@ -102,7 +102,7 @@ const destination = root + "src/content/engine-source.en.json";
 if (process.argv.includes("--check")) {
   if (
     !fs.existsSync(destination) ||
-    fs.readFileSync(destination, "utf8") !== output
+    fs.readFileSync(destination, "utf8").replace(/\r\n/g, "\n") !== output
   )
     throw new Error("English engine source is stale. Run npm run i18n:source.");
 } else fs.writeFileSync(destination, output);
