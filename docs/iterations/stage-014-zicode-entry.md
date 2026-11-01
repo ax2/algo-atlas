@@ -6,3 +6,5 @@
 - 主站应用挂载路径为 `/apps/algo-atlas/`，产品页为 `/software/algo-atlas/`。Vite 相对资源路径及 hash 路由支持子路径部署。
 - 本地 `npm run check` 通过（318 项测试、2961 个词条、生产构建）；关注入口和单屏实验 4 项 Playwright 回归通过，另在桌面/手机两种语言中核对二维码、X、Esc 与排版。
 - 发布由 ZiCode 网站独立脚本按清单同步生产构建，不拷贝源码、用户学习数据或本地配置。
+- 2026-11-01 已发布到 `https://www.zicode.com/apps/algo-atlas/`；公开 HTTPS 下载哈希与部署清单一致，桌面和模拟手机上的双语关注弹窗、二维码、X 链接、Esc 关闭验证通过。
+- 功能提交 `ebcbbb3e07d9a1409146d4c1ffc7239755a63068` 的完整 CI [41269200668](https://github.com/ax2/algo-atlas/actions/runs/41269200668) 于 2026-11-01 11:38（UTC+8）通过：318 项单元测试、66 项生产浏览器测试、2 项开发服务器浏览器测试；日志未报告 flaky 或重试。
