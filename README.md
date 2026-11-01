@@ -22,6 +22,8 @@
 
 ## 本地运行
 
+无需构建的网页包可在 [GitHub Releases](https://github.com/ax2/algo-atlas/releases/latest) 下载。解压后 Windows 运行包内 `START.cmd`，其他系统运行 `node serve.mjs`，再打开 `http://127.0.0.1:4178/`；需要 Node.js 22.12+，无需安装 npm 依赖。部署到静态站点时复制包内 `web/` 内容。发布包与源码目录中的 `START.cmd` 用途不同：源码目录启动 Vite 开发服务。
+
 建议 Node.js 22.12+（或更高的受支持版本）、npm。开发测试另需 Python 3.10+（CI 使用 3.12）来实际执行 Python 教学代码；普通网页运行不需要 Python。
 
 ```powershell
