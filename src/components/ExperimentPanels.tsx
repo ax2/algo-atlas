@@ -5,6 +5,7 @@ import type { Topic } from "../content/types";
 import { AdaptiveNotes, type NoteBlock } from "./AdaptiveNotes";
 import { t } from "../i18n/text";
 import { wordBoundary } from "../i18n/pagination";
+import { lessonOverviews } from "../content/lesson-overviews";
 
 // Break long prose/bit strings into complete, reachable pages rather than clipping.
 function chunks(text: string, size = 80): string[] {
@@ -159,19 +160,55 @@ export function ExperimentNotes({
   frame,
   finished,
   inspect,
+  overview,
+  onOverview,
+  input,
+  target,
 }: {
   topic: Topic;
   trace: Trace;
   frame: Frame;
   finished: boolean;
   inspect: string;
+  overview: boolean;
+  onOverview: (value: boolean) => void;
+  input: string;
+  target: number;
 }) {
   const [tab, setTab] = useState(
     inspect ? "data" : finished ? "result" : "step",
   );
   const [visit, setVisit] = useState(0);
   const e = frame.explanation;
+  const guide = lessonOverviews[topic.id];
+  const selected = overview ? "overview" : tab;
+  const appliedInput =
+    topic.mode === "scenario"
+      ? (trace.source || []).map((item) => t(item)).join(" · ")
+      : input;
   const sections: Record<string, NoteBlock[]> = {
+    overview: [
+      ...detail("本例要做什么", guide.goal),
+      ...detail(
+        "整体步骤",
+        guide.steps.map((item, i) => `${i + 1}. ${t(item)}`).join("\n"),
+      ),
+      ...detail(
+        "本次输入",
+        appliedInput +
+          (["binary-search", "linear-search"].includes(topic.id)
+            ? `\n${t("搜索目标")} = ${target}`
+            : ""),
+      ),
+      ...(topic.mode === "scenario"
+        ? detail("起始条件", trace.frames[0].detail)
+        : []),
+      ...detail("完成时核对", guide.check),
+      ...detail(
+        "如何读图",
+        "图中高亮表示当前处理对象；播放与单步控制时间，「这一步」解释具体变化。整体步骤是思路，循环可能反复执行同一步。",
+      ),
+    ],
     step: [
       ...detail("发生了什么", frame.detail),
       ...(e
@@ -234,8 +271,12 @@ export function ExperimentNotes({
   };
   return (
     <>
-      <nav className="experiment-note-tabs" aria-label="实验讲解">
+      <nav
+        className="experiment-note-tabs lesson-note-tabs"
+        aria-label="实验讲解"
+      >
         {[
+          ["overview", "总览"],
           ["step", "这一步"],
           ["why", "详解"],
           ["data", "数据"],
@@ -243,9 +284,10 @@ export function ExperimentNotes({
         ].map(([id, label]) => (
           <button
             key={id}
-            aria-pressed={tab === id}
+            aria-pressed={selected === id}
             onClick={() => {
-              setTab(id);
+              onOverview(id === "overview");
+              if (id !== "overview") setTab(id);
               setVisit((v) => v + 1);
             }}
           >
@@ -255,10 +297,16 @@ export function ExperimentNotes({
         ))}
       </nav>
       <AdaptiveNotes
-        key={`${tab}-${visit}`}
-        blocks={sections[tab]}
-        className={`${tab === "why" ? "step-explanation" : ""} ${tab === "result" ? "final-output" : ""}`}
-        label={tab === "result" ? "演示输出" : "步骤说明"}
+        key={`${selected}-${visit}`}
+        blocks={sections[selected]}
+        className={`${selected === "why" ? "step-explanation" : ""} ${selected === "result" ? "final-output" : ""}`}
+        label={
+          selected === "overview"
+            ? "本例总览"
+            : selected === "result"
+              ? "演示输出"
+              : "步骤说明"
+        }
       />
     </>
   );

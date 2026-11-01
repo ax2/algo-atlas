@@ -32,6 +32,7 @@ import { readRoute, navigate, makeShare } from "./services/routing";
 import { localRepository } from "./services/learning";
 import type { LearningData } from "./services/learning";
 import { Experiment } from "./components/Experiment";
+import { LessonOrientation } from "./components/LessonOrientation";
 import type { ExperimentState } from "./components/Experiment";
 import { Principles, Complexity, Practice } from "./components/LessonPanels";
 import { Implementation } from "./components/Implementation";
@@ -501,6 +502,7 @@ export default function App() {
                   </div>
                 </div>
               </header>
+              <LessonOrientation topic={topic} />
               <nav className="lesson-tabs" aria-label="课程章节">
                 {tabs.map(([id, label, Icon]) => (
                   <button

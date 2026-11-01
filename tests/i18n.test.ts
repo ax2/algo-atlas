@@ -1,5 +1,6 @@
 import { afterEach, expect, it } from "vitest";
 import { topics } from "../src/content/catalog";
+import { lessonOverviews } from "../src/content/lesson-overviews";
 import { cases } from "../src/content/cases";
 import { problems } from "../src/content/problems";
 import { implementations } from "../src/content/implementations";
@@ -98,6 +99,10 @@ it("translates every curriculum and generated demonstration string", () => {
     else if (value && typeof value === "object")
       Object.values(value).forEach(walk);
   };
+  expect(Object.keys(lessonOverviews).sort()).toEqual(
+    topics.map((topic) => topic.id).sort(),
+  );
+  walk(lessonOverviews);
   walk([topics, cases, problems, implementations]);
   for (const topic of topics)
     for (const input of topic.mode === "scenario" ? ["0", "1"] : [topic.input])

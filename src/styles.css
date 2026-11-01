@@ -4155,6 +4155,117 @@ main {
     overflow: visible;
   }
 }
+/* The lesson map sits outside the fixed-height stage so playback cannot move it. */
+.lesson-orientation {
+  margin: 0 0 24px;
+  padding: 22px 24px 18px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--mint);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.orientation-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+.orientation-heading > div {
+  min-width: 0;
+}
+.orientation-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--mint);
+  font-size: 12px;
+  font-weight: 600;
+}
+.orientation-heading h2 {
+  margin: 9px 0 0;
+  font-size: 19px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.orientation-heading > button {
+  flex-shrink: 0;
+}
+.orientation-route {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  list-style: none;
+  padding: 0;
+  margin: 22px 0 18px;
+}
+.orientation-route li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  min-width: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.orientation-number {
+  color: var(--mint);
+  font-family: var(--mono);
+  font-size: 12px;
+  flex-shrink: 0;
+  padding-top: 3px;
+}
+.orientation-route p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.orientation-check {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+}
+.orientation-check svg {
+  flex-shrink: 0;
+  color: var(--mint);
+  margin-top: 3px;
+}
+.orientation-check p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.orientation-check strong {
+  color: var(--text);
+  margin-right: 10px;
+}
+.orientation-hint {
+  margin: 12px 0 0;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+@media (max-width: 760px) {
+  .lesson-orientation {
+    padding: 16px;
+    margin-bottom: 18px;
+  }
+  .orientation-heading {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .orientation-heading h2 {
+    font-size: 16px;
+  }
+  .orientation-route {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    margin: 16px 0;
+  }
+  .orientation-route li {
+    padding-top: 9px;
+  }
+}
 /* Stage 006: one viewport, one canvas, no nested scrolling. */
 #section-experiment {
   scroll-margin-top: 72px;
@@ -4457,6 +4568,14 @@ main {
 #section-experiment .experiment-note-tabs button[aria-pressed="true"] {
   background: var(--surface-raised);
   color: var(--mint);
+}
+#section-experiment .experiment-note-tabs.lesson-note-tabs {
+  display: flex;
+}
+#section-experiment .lesson-note-tabs button {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-inline: 3px;
 }
 #section-experiment .note-deck {
   flex: 1;

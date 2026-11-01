@@ -39,6 +39,7 @@ export function Experiment({
     [error, setError] = useState("");
   const [effects, setEffects] = useState(true);
   const [guided, setGuided] = useState(false);
+  const [overview, setOverview] = useState(initial.step <= 0);
   const stage = useRef<HTMLDivElement>(null);
   const [fullscreen, setFullscreen] = useState(false);
   useEffect(() => {
@@ -90,6 +91,7 @@ export function Experiment({
       setTarget(t);
       setTargetDraft(String(t));
       setStep(0);
+      setOverview(true);
       setPlaying(false);
       setError("");
       setInspection({ step: -1, text: "" });
@@ -252,7 +254,10 @@ export function Experiment({
                 fitContent
                 frame={frame}
                 kind={trace.kind}
-                onInspect={(text) => setInspection({ step: position, text })}
+                onInspect={(text) => {
+                  setOverview(false);
+                  setInspection({ step: position, text });
+                }}
                 tick={position}
                 milliseconds={playing ? speed : 850}
                 effects={effects}
@@ -290,6 +295,7 @@ export function Experiment({
               className="play-button"
               aria-label={playing ? "暂停" : "播放"}
               onClick={() => {
+                setOverview(false);
                 if (position === trace.frames.length - 1) setStep(0);
                 setPlaying(!playing);
               }}
@@ -307,6 +313,7 @@ export function Experiment({
               disabled={position === 0}
               onClick={() => {
                 setPlaying(false);
+                setOverview(false);
                 setStep(position - 1);
               }}
             >
@@ -318,6 +325,7 @@ export function Experiment({
               disabled={position === trace.frames.length - 1}
               onClick={() => {
                 setPlaying(false);
+                setOverview(false);
                 setStep(position + 1);
               }}
             >
@@ -329,6 +337,7 @@ export function Experiment({
               aria-label="重置"
               onClick={() => {
                 setPlaying(false);
+                setOverview(true);
                 setStep(0);
               }}
             >
@@ -346,6 +355,7 @@ export function Experiment({
                 value={position}
                 onChange={(e) => {
                   setPlaying(false);
+                  setOverview(false);
                   setStep(+e.target.value);
                 }}
               />
@@ -378,6 +388,7 @@ export function Experiment({
               value={frame.checkpoint ? position : ""}
               onChange={(e) => {
                 setPlaying(false);
+                setOverview(false);
                 setStep(+e.target.value);
               }}
             >
@@ -412,12 +423,19 @@ export function Experiment({
             </motion.h4>
           </div>
           <ExperimentNotes
-            key={`${position}-${inspect}`}
+            key={`${input}-${target}-${position}-${inspect}`}
             topic={topic}
             trace={trace}
             frame={frame}
             finished={position === trace.frames.length - 1}
             inspect={inspect}
+            overview={overview}
+            onOverview={(value) => {
+              setOverview(value);
+              if (value) setPlaying(false);
+            }}
+            input={computed.error ? topic.input : input}
+            target={computed.error ? 5 : target}
           />
         </aside>
       </div>
