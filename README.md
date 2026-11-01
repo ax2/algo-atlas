@@ -37,6 +37,7 @@ npm run dev
 npm run check              # 算法性质/存储校验测试 + 类型检查 + 生产构建
 npx playwright install chromium
 npm run test:e2e           # 桌面/移动 Chromium 功能回归
+npm run test:e2e:dev       # 开发服务器中的实时语言切换回归
 npm run preview           # 预览 dist 生产产物
 ```
 
