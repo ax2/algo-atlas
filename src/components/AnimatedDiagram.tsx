@@ -11,14 +11,27 @@ import type {
 } from "../engine/model";
 const travel = [0.65, 0, 0.25, 1] as const;
 const land = [0.16, 1, 0.3, 1] as const;
+const labelLines = (n: Node) => {
+  const label = t(n.label);
+  if (n.kind || label.length <= 16 || !label.includes(" ")) return [label];
+  const breaks = Array.from(label.matchAll(/\s+/g)).map((m) => m.index!);
+  const middle = breaks.reduce((best, i) =>
+    Math.abs(i - label.length / 2) < Math.abs(best - label.length / 2)
+      ? i
+      : best,
+  );
+  return [label.slice(0, middle), label.slice(middle).trimStart()];
+};
 const nodeWidth = (n: Node) =>
   n.kind
     ? 18
     : Math.max(
         46,
-        [...t(n.label)].reduce(
-          (width, c) => width + (/[^\x00-\xff]/.test(c) ? 14 : 8.2),
-          20,
+        ...labelLines(n).map((line) =>
+          [...line].reduce(
+            (width, c) => width + (/[^\x00-\xff]/.test(c) ? 14 : 8.2),
+            20,
+          ),
         ),
       );
 type MotionOptions = {
@@ -224,7 +237,7 @@ function contentBounds(nodes: Node[], edges: Edge[]) {
   for (const n of nodes) {
     const half = Math.max(
       nodeWidth(n) / 2,
-      textWidth(n.label, 14) / 2,
+      ...labelLines(n).map((line) => textWidth(line, 14) / 2),
       n.subtitle ? textWidth(n.subtitle, 11) / 2 : 0,
     );
     points.push(
@@ -457,7 +470,15 @@ function GraphScene({
                   }}
                   transition={{ duration: duration * 0.55, ease: land }}
                 >
-                  {n.label}
+                  {labelLines(n).map((line, i, lines) => (
+                    <tspan
+                      key={i}
+                      x="0"
+                      dy={i ? 16 : lines.length > 1 ? -8 : 0}
+                    >
+                      {line}
+                    </tspan>
+                  ))}
                 </motion.text>
               </AnimatePresence>
               {n.subtitle && !n.kind && (

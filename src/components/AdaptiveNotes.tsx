@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, useMemo } from "react";
 import { t } from "../i18n/text";
 import { useLocale } from "../i18n/react";
+import { wordBoundary } from "../i18n/pagination";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type NoteCell =
@@ -161,6 +162,7 @@ function paginate(
       // At supported viewport sizes at least one line fits. Keep data reachable
       // even if browser zoom leaves less than one line, without an infinite loop.
       low = Math.max(1, low);
+      if (text) low = wordBoundary(text, low);
       page.push(
         text
           ? { ...block, text: text.slice(0, low).join("") }

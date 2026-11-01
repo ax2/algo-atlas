@@ -4250,7 +4250,10 @@ main {
   min-height: 24px;
 }
 #section-experiment .inline-data strong {
-  flex-shrink: 0;
+  flex-shrink: 1;
+  max-width: 35%;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
   color: var(--mint);
   font-size: 10px;
 }
@@ -4337,8 +4340,9 @@ main {
   padding: 8px;
 }
 #section-experiment .worklist-panel {
-  height: 38px;
+  height: auto;
   min-height: 38px;
+  flex-shrink: 0;
   overflow: visible;
   margin: 0;
   padding: 3px 6px;
@@ -4378,6 +4382,11 @@ main {
 #section-experiment .timeline {
   gap: 5px;
   padding: 0 4px;
+}
+#section-experiment .timeline input {
+  display: block;
+  height: 16px;
+  flex-shrink: 0;
 }
 #section-experiment .play-button > svg {
   width: 36px;
@@ -5243,6 +5252,7 @@ main {
 }
 #section-experiment .case-metrics strong {
   font-size: clamp(18px, 2vw, 30px);
+  line-height: 1.3;
   overflow-wrap: anywhere;
   text-align: right;
 }
@@ -5478,7 +5488,8 @@ main {
 }
 #section-experiment .micro-stage {
   min-width: 0;
-  width: 85px;
+  width: auto;
+  flex: 1;
   padding: 2px;
   font-size: 10px;
   height: 25px;
@@ -5495,11 +5506,15 @@ main {
 }
 .micro-controls > span {
   font-size: 10px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
   min-width: 0;
   margin-left: auto;
+}
+@container (max-width: 340px) {
+  .micro-play-label {
+    display: none;
+  }
 }
 .micro-formula {
   display: flex;

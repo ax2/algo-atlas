@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { t } from "../i18n/text";
+import { t, getLocale } from "../i18n/text";
 import {
   ArrowUpRight,
   BookOpen,
@@ -265,6 +265,13 @@ export function Practice({
           <CheckCircle2 size={17} /> 标记本课已掌握
         </button>
         <h2>查看真实实验实现</h2>
+        {getLocale() === "en" && (
+          <p className="muted">
+            English source view: comments, teaching messages and display labels
+            are localized. Copy uses this view; the original source is available
+            through the GitHub link below.
+          </p>
+        )}
         <p>
           这里展示运行当前实验的 TypeScript
           引擎源文件；同类课程共享辅助代码，通过 id
@@ -280,7 +287,9 @@ export function Practice({
               className="button compact"
               onClick={async () => {
                 try {
-                  await navigator.clipboard.writeText(engineSource(topic.id));
+                  await navigator.clipboard.writeText(
+                    engineSource(topic.id, getLocale()),
+                  );
                   notify("引擎源码已复制");
                 } catch {
                   notify("浏览器不允许复制，请在代码区手动选择。");
@@ -291,7 +300,7 @@ export function Practice({
               复制
             </button>
             <pre>
-              <code translate="no">{engineSource(topic.id)}</code>
+              <code>{engineSource(topic.id, getLocale())}</code>
             </pre>
           </div>
         )}

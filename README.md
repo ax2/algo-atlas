@@ -38,6 +38,7 @@ npm run check              # 算法性质/存储校验测试 + 类型检查 + �
 npx playwright install chromium
 npm run test:e2e           # 桌面/移动 Chromium 功能回归
 npm run test:e2e:dev       # 开发服务器中的实时语言切换回归
+npm run i18n:source        # 词条更新后重新生成英文源码教学视图
 npm run preview           # 预览 dist 生产产物
 ```
 
@@ -90,6 +91,8 @@ Stage 010 支持双向联动：点击张量单元格或参数账本数值，反�
 Stage 011 在数值推导中增加“逐步演示”：实际乘加、激活、梯度贡献累加与参数写入依次回放，公式与带原始坐标的单元格同色对应，图中节点/连线同步高亮并显示本步数值。支持独立播放、暂停、前后单步和进度拖动，保持单屏无内部滚动条。见 [计算过程动态回放](docs/iterations/stage-011-calculation-playback.md)。
 
 Stage 012 从损失逐层展开反向传播，分别显示上游梯度、局部导数和多路累加，并提供层级跳转与可分页的步骤详解。新增完整课程与交互的英文支持。见 [逐层反传与英文支持](docs/iterations/stage-012-backprop-english.md)。
+
+Stage 013 补齐英文源码教学视图与独立统计标签，审查代码注释、题解和动态说明；改进英文单词分页、长节点换行、短屏工作区及控制条。见 [英文内容与排版审查](docs/iterations/stage-013-english-audit.md)。
 
 ## 设计与工程
 

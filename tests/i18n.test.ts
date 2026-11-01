@@ -10,7 +10,74 @@ import { setLocale, t } from "../src/i18n/text";
 import source from "../src/i18n/source.json";
 import english from "../src/i18n/en";
 import { localizedProps } from "../src/i18n/props";
+import { engineSource } from "../src/engine";
+import ts from "typescript";
+import { wordBoundary } from "../src/i18n/pagination";
+import { runInNewContext } from "node:vm";
+import { spawnSync } from "node:child_process";
 afterEach(() => setLocale("zh"));
+it("English JavaScript and Python comments preserve all executable teaching examples", () => {
+  setLocale("en");
+  const cases = Object.values(implementations).flatMap((p) =>
+    p.examples.map((e) => ({ id: p.id, code: t(p.python), ...e })),
+  );
+  for (const p of Object.values(implementations))
+    for (const e of p.examples)
+      expect(
+        JSON.parse(
+          JSON.stringify(
+            runInNewContext(
+              t(p.javascript) + "\nsolve(...args)",
+              { args: structuredClone(e.args) },
+              { timeout: 2000 },
+            ),
+          ),
+        ),
+        p.id,
+      ).toEqual(e.answer);
+  const script =
+    "import sys,json\ncases=json.load(sys.stdin)\nout=[]\nfor case in cases:\n scope={}\n exec(case['code'],scope)\n out.append(scope['solve'](*case['args']))\nprint(json.dumps(out,allow_nan=False))";
+  const result = spawnSync(
+    process.platform === "win32" ? "python" : "python3",
+    ["-X", "utf8", "-c", script],
+    { input: JSON.stringify(cases), encoding: "utf8", timeout: 30000 },
+  );
+  expect(result.status, result.stderr).toBe(0);
+  expect(JSON.parse(result.stdout)).toEqual(cases.map((c) => c.answer));
+});
+it("English source views are complete valid TypeScript, including comments and teaching literals", () => {
+  const seen = new Set<string>();
+  for (const topic of topics) {
+    const source = engineSource(topic.id, "en");
+    expect(source, topic.id).toBeTruthy();
+    expect(source, topic.id).not.toMatch(/\p{Script=Han}/u);
+    if (seen.has(source)) continue;
+    seen.add(source);
+    const compiled = ts.transpileModule(source, {
+      reportDiagnostics: true,
+      compilerOptions: {
+        target: ts.ScriptTarget.ES2022,
+        module: ts.ModuleKind.ESNext,
+      },
+    });
+    expect(compiled.diagnostics, topic.id).toEqual([]);
+  }
+  expect(seen.size).toBe(9);
+});
+it("text pagination respects English word boundaries without losing long tokens", () => {
+  const text =
+    "Upstream gradient accumulation with a long_identifier_0123456789";
+  let rest = Array.from(text);
+  const pages: string[] = [];
+  while (rest.length) {
+    const end = wordBoundary(rest, Math.min(16, rest.length));
+    expect(end).toBeGreaterThan(0);
+    pages.push(rest.slice(0, end).join(""));
+    rest = rest.slice(end);
+  }
+  expect(pages.join("")).toBe(text);
+  expect(pages[0]).toBe("Upstream ");
+});
 it("every extracted message has English and retains its interpolation slots", () => {
   for (const [i, s] of source.entries()) {
     expect(english[i], `${i}: ${s}`).toBeTruthy();

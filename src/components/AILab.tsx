@@ -492,7 +492,7 @@ export function AILab({ id }: { id: LabId }) {
                             ...displayDiagram,
                             nodes: displayDiagram.nodes?.map((n) => ({
                               ...n,
-                              x: n.x * 0.7,
+                              x: n.x,
                               y: n.y * 0.7,
                             })),
                           }
@@ -691,7 +691,7 @@ export function AILab({ id }: { id: LabId }) {
                   步骤 {position + 1} / {trace.frames.length}
                 </span>
                 <label>
-                  跳到{rl ? "回合" : "轮次"}
+                  {rl ? "跳到回合" : "跳到轮次"}
                   <select
                     aria-label="跳到轮次"
                     value={frame.iteration}

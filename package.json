@@ -13,7 +13,8 @@
     "test:e2e": "playwright test",
     "test:e2e:dev": "playwright test -c playwright.dev.config.ts",
     "i18n:extract": "node scripts/extract-messages.mjs",
-    "i18n:check": "node scripts/extract-messages.mjs --check",
+    "i18n:source": "node scripts/localize-engine.mjs",
+    "i18n:check": "node scripts/extract-messages.mjs --check && node scripts/localize-engine.mjs --check",
     "check": "npm run i18n:check && npm run test && npm run build"
   },
   "dependencies": {

@@ -17,6 +17,7 @@ import graphsSource from "./graphs.ts?raw";
 import strategiesSource from "./strategies.ts?raw";
 import stringsSource from "./strings.ts?raw";
 import mathSource from "./math.ts?raw";
+import englishSource from "../content/engine-source.en.json";
 export function runTrace(id: string, input: string, target = 5) {
   const trace = computeTrace(id, input, target);
   return teach(topicById[id], trace, input);
@@ -44,8 +45,20 @@ function computeTrace(id: string, input: string, target: number) {
       return ai(id, input);
   }
 }
-export function engineSource(id: string) {
+export function engineSource(id: string, locale: "zh" | "en" = "zh") {
   const category = topicById[id].category;
+  if (locale === "en") {
+    const file = advancedIds.includes(id)
+      ? "advanced"
+      : ["avl", "red-black"].includes(id)
+        ? "balanced"
+        : id === "graph"
+          ? "graphs"
+          : category === "patterns"
+            ? "strategies"
+            : category;
+    return englishSource[file as keyof typeof englishSource];
+  }
   return {
     structures: advancedIds.includes(id)
       ? advancedSource

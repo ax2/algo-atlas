@@ -33,7 +33,8 @@ function walk(dir) {
       if (
         ts.isStringLiteral(node) ||
         ts.isNoSubstitutionTemplateLiteral(node) ||
-        ts.isJsxText(node)
+        ts.isJsxText(node) ||
+        ts.isIdentifier(node)
       )
         add(node.text);
       else if (ts.isTemplateExpression(node))

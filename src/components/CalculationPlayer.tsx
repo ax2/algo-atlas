@@ -49,7 +49,7 @@ export function CalculationPlayer({
           disabled={index === steps.length - 1}
         >
           {playing ? <Pause size={13} /> : <Play size={13} />}
-          {playing ? "暂停" : "播放"}
+          <span className="micro-play-label">{playing ? "暂停" : "播放"}</span>
         </button>
         <button
           aria-label="计算下一步"

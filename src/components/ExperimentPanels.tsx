@@ -4,26 +4,26 @@ import type { Frame, Trace } from "../engine/model";
 import type { Topic } from "../content/types";
 import { AdaptiveNotes, type NoteBlock } from "./AdaptiveNotes";
 import { t } from "../i18n/text";
+import { wordBoundary } from "../i18n/pagination";
 
 // Break long prose/bit strings into complete, reachable pages rather than clipping.
 function chunks(text: string, size = 80): string[] {
   text = t(text);
   const pages: string[] = [];
-  let page = "",
-    lines = 1,
-    count = 0;
-  for (const c of Array.from(text)) {
-    if (count >= size || (c === "\n" && lines >= 3)) {
-      pages.push(page);
-      page = "";
+  let chars = Array.from(text);
+  while (chars.length) {
+    let end = Math.min(size, chars.length),
       lines = 1;
-      count = 0;
-    }
-    page += c;
-    count++;
-    if (c === "\n") lines++;
+    for (let i = 0; i < end; i++)
+      if (chars[i] === "\n" && ++lines > 3) {
+        end = Math.max(1, i);
+        break;
+      }
+    end = wordBoundary(chars, end);
+    pages.push(chars.slice(0, end).join(""));
+    chars = chars.slice(end);
   }
-  if (page || !pages.length) pages.push(page);
+  if (!pages.length) pages.push("");
   return pages;
 }
 function Pager({
